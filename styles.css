@@ -612,6 +612,18 @@ body {
     color: var(--primary);
 }
 
+/* Paused status badge variant */
+.status-badge-paused {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.4);
+    color: #92400e;
+}
+
+.status-dot-paused {
+    background: #f59e0b;
+    animation: none;
+}
+
 /* CTA Section */
 .cta-section {
     padding: 80px 0;
@@ -636,6 +648,23 @@ body {
     font-size: 1.125rem;
     margin-bottom: 2rem;
     opacity: 0.9;
+}
+
+.newsletter-pause-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+}
+
+.substack-widget {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    padding: 0.5rem;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.newsletter-link {
+    display: inline-flex;
 }
 
 /* Footer */

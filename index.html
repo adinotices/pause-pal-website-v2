@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PausePal - Find Your Meditation Accountability Buddy</title>
-    <meta name="description" content="Build a consistent meditation practice with an accountability buddy. Join PausePal's 4-week program to meditate together and cultivate mindfulness.">
+    <title>PausePal - Meditation Accountability (Currently on Pause)</title>
+    <meta name="description" content="PausePal is currently on pause. Subscribe to our newsletter to be the first to know when we return. Build a consistent meditation practice with an accountability buddy.">
     
     <!-- Favicons -->
     <link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
@@ -33,7 +33,7 @@
                     <a href="#how-it-works">How It Works</a>
                     <a href="#faqs">FAQs</a>
                     <a href="#testimonials">Testimonials</a>
-                    <a href="https://app.formbricks.com/s/e4nf6cvzk67w4gygg9io8hcx" target="_blank" class="btn-nav">Sign Up for Cohort 8</a>
+                    <a href="#newsletter" class="btn-nav">Subscribe to Newsletter</a>
                 </div>
                 <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
                     <span></span>
@@ -49,7 +49,7 @@
         <a href="#how-it-works" onclick="toggleMobileMenu()">How It Works</a>
         <a href="#faqs" onclick="toggleMobileMenu()">FAQs</a>
         <a href="#testimonials" onclick="toggleMobileMenu()">Testimonials</a>
-        <a href="https://app.formbricks.com/s/e4nf6cvzk67w4gygg9io8hcx" target="_blank" class="btn-nav" onclick="toggleMobileMenu()">Sign Up for Cohort 8</a>
+        <a href="#newsletter" class="btn-nav" onclick="toggleMobileMenu()">Subscribe to Newsletter</a>
     </div>
 
     <!-- Hero Section -->
@@ -63,25 +63,19 @@
             <div class="hero-content">
                 <div class="hero-text">
                     <h1 class="hero-title">
-                        Finding it hard to build a 
+                        Finding it hard to build a
                         <span class="gradient-text">meditation habit?</span>
                     </h1>
                     <p class="hero-subtitle">
-                        Find a pal you can meditate with for accountability. Join our 4-week program to cultivate mindfulness together.
+                        PausePal pairs you with a meditation accountability buddy for a 4-week program. We're currently on pause — subscribe to our newsletter to be the first to know when we return.
                     </p>
-                    <div class="status-badge">
-                        <span class="status-dot"></span>
-                        Signup Deadline: Jan 22 2026<br>Start Date: Jan 30 2026
+                    <div class="status-badge status-badge-paused">
+                        <span class="status-dot status-dot-paused"></span>
+                        PausePal is currently on pause
                     </div>
                     <div class="hero-cta">
-                        <a href="https://app.formbricks.com/s/e4nf6cvzk67w4gygg9io8hcx" target="_blank" class="btn btn-primary">
-                            Sign Up for Cohort 8
-                            <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                        </a>
-                        <a href="https://pausepal.substack.com/" target="_blank" class="btn btn-secondary">
-                            Join Our Newsletter for Updates
+                        <a href="#newsletter" class="btn btn-primary">
+                            Subscribe to Our Newsletter
                             <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M5 12h14M12 5l7 7-7 7"/>
                             </svg>
@@ -367,15 +361,26 @@
         </div>
     </section>
 
-    <!-- CTA Section -->
-    <section id="signup" class="cta-section">
+    <!-- Newsletter Section -->
+    <section id="newsletter" class="cta-section">
         <div class="container">
             <div class="cta-card">
                 <div class="cta-content">
-                    <h2>Ready to transform your meditation practice?</h2>
-                    <p>Join Cohort 8 and build your meditation practice with an accountability buddy. Signup deadline is January 22nd, 2026.</p>
-                    <a href="https://app.formbricks.com/s/e4nf6cvzk67w4gygg9io8hcx" target="_blank" class="btn btn-light">
-                        Sign Up for Cohort 8
+                    <div class="newsletter-pause-icon">🐢</div>
+                    <h2>PausePal is on pause</h2>
+                    <p>We're taking a break from running cohorts, but we're not gone. Subscribe to our Substack newsletter to stay connected and hear first when we're back.</p>
+                    <div class="substack-widget">
+                        <iframe src="https://pausepal.substack.com/embed"
+                                width="100%"
+                                height="150"
+                                style="border:none; background:transparent;"
+                                frameborder="0"
+                                scrolling="no"
+                                title="Subscribe to the PausePal newsletter on Substack">
+                        </iframe>
+                    </div>
+                    <a href="https://pausepal.substack.com/" target="_blank" class="btn btn-light newsletter-link">
+                        Visit our Substack
                         <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>
@@ -394,7 +399,7 @@
                         <img src="turtle.svg" alt="PausePal Logo" class="logo-icon">
                         <span class="logo-text">PausePal</span>
                     </div>
-                    <p>Find your meditation accountability buddy.</p>
+                    <p>Your meditation accountability buddy. Currently on pause.</p>
                 </div>
                 <div class="footer-links">
                     <h4>Contact</h4>
@@ -402,13 +407,15 @@
                 </div>
             </div>
             <div class="footer-bottom footer-links">
-                <p>&copy; 2025 PausePal. Made with ❤️ by <a href="https://adityaaswani.com/">Aditya</a> in NYC.</p>
+                <p>&copy; <span id="footer-year"></span> PausePal. Made with ❤️ by <a href="https://adityaaswani.com/">Aditya</a> in NYC.</p>
             </div>
         </div>
     </footer>
 
 
     <script>
+        document.getElementById('footer-year').textContent = new Date().getFullYear();
+
         // Mobile menu toggle
         function toggleMobileMenu() {
             const menu = document.getElementById('mobileMenu');
