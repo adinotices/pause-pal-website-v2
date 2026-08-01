@@ -189,7 +189,9 @@ Postgres and `app/admin/matching/` is the review UI.
   A *hard* requirement that can't be confidently verified (e.g. the other
   person's identity is blank, or the text doesn't parse) is treated as
   **not** satisfied — a false block is a minor annoyance, silently
-  ignoring someone's stated requirement is not.
+  ignoring someone's stated requirement is not. Negated phrasings ("not a
+  man", "anyone but women") are detected specifically, because the
+  substring fallback reads them exactly backwards otherwise.
 - **Admin workflow** (`/admin/matching?cohort=N`): "Generate proposals"
   runs the solver and stores the result as `proposed` matches. Regenerating
   deletes and replaces every proposed match *except* pinned ones, so you

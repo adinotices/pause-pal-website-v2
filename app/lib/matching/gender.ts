@@ -41,6 +41,34 @@ function normalize(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/**
+ * Phrases that invert the meaning of whatever follows them. These matter
+ * because the substring fallback below is otherwise exactly backwards for
+ * a negated preference: "not a man" *contains* "man", so a naive
+ * containment check reads it as satisfied by a man -- the single worst
+ * way this function can be wrong, since it silently overrides a stated
+ * hard requirement.
+ */
+const NEGATION_PATTERN =
+  /\b(not|no|non|none|never|anyone but|anything but|any but|except|other than|besides|excluding|rather not|prefer not|avoid)\b/;
+
+function isNegated(text: string): boolean {
+  return NEGATION_PATTERN.test(text);
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Whether `text` names a bucket, by any of its synonyms, as a whole word.
+ * Whole-word matters: "man" is a substring of "woman", so a plain
+ * `includes` would read "no women" as naming the man bucket. */
+function mentionsBucket(text: string, bucket: string): boolean {
+  return CANONICAL_BUCKETS[bucket].some((synonym) =>
+    new RegExp(`\\b${escapeRegExp(synonym)}\\b`).test(text),
+  );
+}
+
 function toBucket(text: string): string | null {
   const normalized = normalize(text);
   for (const [bucket, synonyms] of Object.entries(CANONICAL_BUCKETS)) {
@@ -63,7 +91,9 @@ export type GenderMatchResult = "satisfied" | "mismatch" | "unknown";
  * - If both sides normalize into a recognized bucket (woman/man/nonbinary),
  *   compares those buckets directly.
  * - Otherwise falls back to substring containment as a heuristic for
- *   free-text answers we don't recognize.
+ *   free-text answers we don't recognize -- except when the preference is
+ *   phrased as a negation ("not a man"), where containment means the
+ *   opposite and can never confirm a match.
  * - If we genuinely can't tell, returns "unknown" -- callers enforcing a
  *   *hard* requirement should treat "unknown" as not satisfied (a false
  *   block is a minor annoyance; silently ignoring someone's stated
@@ -86,8 +116,33 @@ export function checkGenderPreference(
 
   const normPref = normalize(preference!);
   const normIdentity = normalize(candidateIdentity);
-  if (normPref === normIdentity || normIdentity.includes(normPref) || normPref.includes(normIdentity)) {
+
+  // A negated preference ("not a man", "anyone but women") can never be
+  // confirmed satisfied by the substring heuristic -- containment means
+  // the opposite there. Fall through to "mismatch"/"unknown" instead,
+  // which is the safe direction: a false block is a minor annoyance,
+  // quietly ignoring someone's stated requirement is not.
+  const negated = isNegated(normPref);
+
+  if (
+    !negated &&
+    (normPref === normIdentity ||
+      normIdentity.includes(normPref) ||
+      normPref.includes(normIdentity))
+  ) {
     return "satisfied";
+  }
+
+  if (negated) {
+    // If the thing they said no to is what this person is, that's a real
+    // mismatch; otherwise we genuinely can't tell from free text.
+    // Whole-word again, for the same reason as mentionsBucket: a plain
+    // `includes` would read "not a woman" as excluding a "man".
+    const namesIdentityVerbatim = new RegExp(`\\b${escapeRegExp(normIdentity)}\\b`).test(normPref);
+    const excludesThisPerson =
+      namesIdentityVerbatim ||
+      (identityBucket !== null && mentionsBucket(normPref, identityBucket));
+    return excludesThisPerson ? "mismatch" : "unknown";
   }
 
   if (preferenceBucket || identityBucket) {
