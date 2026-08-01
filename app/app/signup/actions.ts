@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { getOpenCohort, submitSignup } from "@/lib/db/queries";
+import { getOpenCohort, submitSignup, SignupAlreadyFinalizedError } from "@/lib/db/queries";
 
 const availabilitySchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6),
@@ -78,6 +78,13 @@ export async function submitSignupAction(
   try {
     await submitSignup({ cohortId: cohort.id, ...parsed.data });
   } catch (err) {
+    if (err instanceof SignupAlreadyFinalizedError) {
+      return {
+        status: "error",
+        message:
+          "You've already been matched for this cohort, so this form can no longer make changes. Email hello@pausepal.co if something needs to change.",
+      };
+    }
     console.error("submitSignup failed", err);
     return {
       status: "error",

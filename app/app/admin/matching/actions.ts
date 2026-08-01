@@ -8,6 +8,7 @@ import {
   setMatchPinned,
 } from "@/lib/db/matching-queries";
 import { getCohortByNumber } from "@/lib/db/queries";
+import { requireAdmin } from "@/lib/require-admin";
 
 async function requireCohort(cohortNumber: number) {
   const cohort = await getCohortByNumber(cohortNumber);
@@ -16,6 +17,7 @@ async function requireCohort(cohortNumber: number) {
 }
 
 export async function generateProposalsAction(formData: FormData) {
+  await requireAdmin();
   const cohortNumber = Number(formData.get("cohortNumber"));
   const cohort = await requireCohort(cohortNumber);
   await generateProposalsForCohort(cohort.id);
@@ -23,6 +25,7 @@ export async function generateProposalsAction(formData: FormData) {
 }
 
 export async function togglePinAction(formData: FormData) {
+  await requireAdmin();
   const matchId = Number(formData.get("matchId"));
   const pinned = formData.get("pinned") === "true";
   const cohortNumber = Number(formData.get("cohortNumber"));
@@ -31,6 +34,7 @@ export async function togglePinAction(formData: FormData) {
 }
 
 export async function deleteMatchAction(formData: FormData) {
+  await requireAdmin();
   const matchId = Number(formData.get("matchId"));
   const cohortNumber = Number(formData.get("cohortNumber"));
   await deleteProposedMatch(matchId);
@@ -38,6 +42,7 @@ export async function deleteMatchAction(formData: FormData) {
 }
 
 export async function approveAllAction(formData: FormData) {
+  await requireAdmin();
   const cohortNumber = Number(formData.get("cohortNumber"));
   const cohort = await requireCohort(cohortNumber);
   await approveMatchesForCohort(cohort.id);

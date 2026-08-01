@@ -172,6 +172,11 @@ export const matches = pgTable("matches", {
   // that match's weekly sessions. Null until "send calendar invites" runs.
   zoomMeetingId: text("zoom_meeting_id"),
   zoomJoinUrl: text("zoom_join_url"),
+  // Timestamp of the last time "send calendar invites" ran for this match
+  // -- NOT proof that it fully succeeded (Zoom/Calendar may have been
+  // unconfigured, or partially failed). Whether a match still needs work
+  // is computed fresh from its actual state each time; see
+  // lib/db/scheduling-queries.ts#isFullyProcessed.
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
 });
 

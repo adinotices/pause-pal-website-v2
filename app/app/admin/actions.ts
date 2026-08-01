@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ADMIN_SESSION_COOKIE, signSession, verifyPassword } from "@/lib/auth";
+import { requireAdmin } from "@/lib/require-admin";
 import { db } from "@/lib/db";
 import { cohorts } from "@/lib/db/schema";
 
@@ -46,6 +47,7 @@ const createCohortSchema = z.object({
 /** Creates a new cohort in the `open` state and closes any cohort that was
  * previously open. Phase 1 assumes at most one open cohort at a time. */
 export async function createCohortAction(formData: FormData) {
+  await requireAdmin();
   const parsed = createCohortSchema.parse({
     number: formData.get("number"),
     startsOn: formData.get("startsOn"),
@@ -71,6 +73,7 @@ export async function createCohortAction(formData: FormData) {
 }
 
 export async function closeCohortAction(formData: FormData) {
+  await requireAdmin();
   const cohortId = Number(formData.get("cohortId"));
   await db.update(cohorts).set({ state: "closed" }).where(eq(cohorts.id, cohortId));
   redirect("/admin");

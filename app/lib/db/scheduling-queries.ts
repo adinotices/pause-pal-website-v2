@@ -4,6 +4,7 @@ import { cohorts, matchSessions, matches } from "./schema";
 import { toRawSignupInput } from "./matching-queries";
 import { computeMatchSchedule, type ComputedSession } from "@/lib/scheduling/compute-schedule";
 import { computeWeekCount } from "@/lib/scheduling/instants";
+import { isFullyProcessed } from "@/lib/scheduling/status";
 import { isGoogleCalendarConfigured, isZoomConfigured } from "@/lib/integrations/config";
 import { createRecurringMeeting } from "@/lib/integrations/zoom";
 import { createRecurringEvent } from "@/lib/integrations/google-calendar";
@@ -25,6 +26,16 @@ async function getApprovedMatchesWithMembers(cohortId: number) {
 
 function topicFor(firstNames: string[]): string {
   return `PausePal: ${firstNames.join(" & ")}`;
+}
+
+function isMatchFullyProcessed(match: {
+  zoomMeetingId: string | null;
+  sessions: { googleCalendarEventId: string | null }[];
+}): boolean {
+  return isFullyProcessed(match, {
+    zoomConfigured: isZoomConfigured(),
+    calendarConfigured: isGoogleCalendarConfigured(),
+  });
 }
 
 export type MatchSchedulePreview = {
@@ -62,7 +73,7 @@ export async function previewScheduleForCohort(cohortId: number): Promise<MatchS
         matchId: match.id,
         topic: topicFor(firstNames),
         members,
-        alreadyScheduled: Boolean(match.scheduledAt),
+        alreadyScheduled: isMatchFullyProcessed(match),
         zoomJoinUrl: match.zoomJoinUrl,
         weekCount: match.sessions[0]?.weekCount ?? weekCount,
         sessions: match.sessions.map((s) => ({
@@ -97,13 +108,17 @@ export type SendScheduleResult = {
 };
 
 /**
- * Idempotently schedules every approved-but-unscheduled match in a cohort:
- * creates (or reuses) one Zoom meeting per match and one recurring Google
- * Calendar event per weekly session, then marks the match scheduled. A
- * match already marked `scheduledAt` is skipped outright; a match that
- * partially succeeded on a prior attempt (e.g. Zoom created but Calendar
- * failed) resumes from where it left off rather than redoing work or
- * duplicating meetings/events.
+ * Idempotently schedules every approved match in a cohort that isn't
+ * already fully processed (see `isFullyProcessed`): creates (or reuses)
+ * one Zoom meeting per match and one recurring Google Calendar event per
+ * weekly session, then records when it last ran. A match is only skipped
+ * once it has session times *and* every integration that's actually
+ * configured has completed for it -- so a match sent before Zoom/Google
+ * were configured isn't stuck forever; configuring them and sending again
+ * picks up exactly the missing piece. A match that partially succeeded on
+ * a prior attempt (e.g. Zoom created but Calendar failed) resumes from
+ * where it left off rather than redoing work or duplicating meetings/
+ * events.
  */
 export async function sendScheduleForCohort(cohortId: number): Promise<SendScheduleResult[]> {
   const [cohort] = await db.select().from(cohorts).where(eq(cohorts.id, cohortId)).limit(1);
@@ -116,7 +131,7 @@ export async function sendScheduleForCohort(cohortId: number): Promise<SendSched
   const results: SendScheduleResult[] = [];
 
   for (const match of approvedMatches) {
-    if (match.scheduledAt) {
+    if (isMatchFullyProcessed(match)) {
       results.push({ matchId: match.id, status: "skipped_already_scheduled", zoomCreated: false, calendarEventsCreated: 0 });
       continue;
     }
