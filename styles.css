@@ -64,6 +64,15 @@ body {
     top: 0;
 }
 
+/* Anchor targets are made programmatically focusable so that following an
+   in-page link (the skip link above, most importantly) actually moves
+   keyboard focus. They're containers, not controls, so they shouldn't
+   render a focus ring of their own -- the focus is a handoff, not an
+   interaction. */
+[tabindex="-1"]:focus {
+    outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
