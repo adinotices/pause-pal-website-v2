@@ -39,3 +39,12 @@ export function computeWeekCount(
   if (!Number.isFinite(days) || days <= 0) return 4;
   return Math.max(1, Math.round(days / 7));
 }
+
+/** All real occurrence instants for a recurring weekly session --
+ * `firstOccurrenceAt`, plus 7/14/21... days, `weekCount` times total. */
+export function allOccurrences(firstOccurrenceAt: Date, weekCount: number): Date[] {
+  return Array.from(
+    { length: weekCount },
+    (_, i) => new Date(firstOccurrenceAt.getTime() + i * 7 * DAY_MS),
+  );
+}

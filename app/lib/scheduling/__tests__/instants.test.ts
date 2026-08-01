@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeWeekCount, firstOccurrenceUTC } from "../instants";
+import { allOccurrences, computeWeekCount, firstOccurrenceUTC } from "../instants";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -49,5 +49,22 @@ describe("computeWeekCount", () => {
 
   it("clamps a short-but-positive span up to at least 1 week", () => {
     expect(computeWeekCount("2026-10-05", "2026-10-08")).toBe(1); // 3 days -> rounds to 0 without the floor
+  });
+});
+
+describe("allOccurrences", () => {
+  it("returns weekCount instants spaced exactly 7 days apart, starting with the first", () => {
+    const first = new Date("2026-10-05T06:00:00.000Z");
+    const result = allOccurrences(first, 4);
+    expect(result).toHaveLength(4);
+    expect(result[0].toISOString()).toBe("2026-10-05T06:00:00.000Z");
+    expect(result[1].toISOString()).toBe("2026-10-12T06:00:00.000Z");
+    expect(result[2].toISOString()).toBe("2026-10-19T06:00:00.000Z");
+    expect(result[3].toISOString()).toBe("2026-10-26T06:00:00.000Z");
+  });
+
+  it("returns a single occurrence for weekCount of 1", () => {
+    const first = new Date("2026-10-05T06:00:00.000Z");
+    expect(allOccurrences(first, 1)).toEqual([first]);
   });
 });

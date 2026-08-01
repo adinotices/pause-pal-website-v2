@@ -24,11 +24,16 @@ export default async function AdminPage({
     <main className="mx-auto max-w-6xl px-4 py-10">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">PausePal admin</h1>
-        <form action={logoutAction}>
-          <button type="submit" className="text-sm text-neutral-500 underline">
-            Log out
-          </button>
-        </form>
+        <div className="flex items-center gap-4">
+          <Link href="/admin/testimonials" className="text-sm text-emerald-700 underline">
+            Testimonials
+          </Link>
+          <form action={logoutAction}>
+            <button type="submit" className="text-sm text-neutral-500 underline">
+              Log out
+            </button>
+          </form>
+        </div>
       </div>
 
       <section className="mt-8 rounded-xl border border-neutral-200 p-5">

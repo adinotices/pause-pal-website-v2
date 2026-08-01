@@ -214,6 +214,70 @@ export const matchSessions = pgTable("match_sessions", {
   googleCalendarEventId: text("google_calendar_event_id"),
 });
 
+/**
+ * A single-use magic-link sign-in token for the participant dashboard.
+ * Only the SHA-256 hash of the token is stored -- same principle as a
+ * password hash -- so a DB read alone can't be used to sign in as anyone;
+ * the raw token only ever exists in the emailed link.
+ */
+export const magicLinkTokens = pgTable("magic_link_tokens", {
+  id: serial("id").primaryKey(),
+  personId: integer("person_id")
+    .notNull()
+    .references(() => people.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * End-of-program feedback for one signup (a person can give feedback once
+ * per cohort they participated in). `publishDisplayName` is admin-curated
+ * (e.g. "D. Kim" rather than a full name) and only shown once `published`
+ * is set -- consenting to publish doesn't publish it immediately, an admin
+ * still reviews it first.
+ */
+export const feedback = pgTable("feedback", {
+  id: serial("id").primaryKey(),
+  signupId: integer("signup_id")
+    .notNull()
+    .references(() => signups.id, { onDelete: "cascade" })
+    .unique(),
+  rating: smallint("rating").notNull(),
+  text: text("text").notNull(),
+  consentToPublish: boolean("consent_to_publish").notNull().default(false),
+  published: boolean("published").notNull().default(false),
+  publishDisplayName: text("publish_display_name"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Records that a given reminder email actually went out, keyed so a cron
+ * route that runs more than once (retries, overlapping schedules) can't
+ * send the same reminder twice. `kind` + `referenceId` + `occurrenceDate`
+ * must be unique together -- see lib/db/reminder-queries.ts, which relies
+ * on a DB conflict (not an application-level check) to make sends
+ * race-safe.
+ */
+export const sentReminders = pgTable(
+  "sent_reminders",
+  {
+    id: serial("id").primaryKey(),
+    kind: text("kind").notNull(),
+    referenceId: integer("reference_id").notNull(),
+    occurrenceDate: text("occurrence_date").notNull(), // ISO date (YYYY-MM-DD)
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("sent_reminders_unique_idx").on(
+      table.kind,
+      table.referenceId,
+      table.occurrenceDate,
+    ),
+  ],
+);
+
 // --- Relations ---------------------------------------------------------------
 
 export const cohortsRelations = relations(cohorts, ({ many }) => ({
@@ -223,6 +287,21 @@ export const cohortsRelations = relations(cohorts, ({ many }) => ({
 
 export const peopleRelations = relations(people, ({ many }) => ({
   signups: many(signups),
+  magicLinkTokens: many(magicLinkTokens),
+}));
+
+export const magicLinkTokensRelations = relations(magicLinkTokens, ({ one }) => ({
+  person: one(people, {
+    fields: [magicLinkTokens.personId],
+    references: [people.id],
+  }),
+}));
+
+export const feedbackRelations = relations(feedback, ({ one }) => ({
+  signup: one(signups, {
+    fields: [feedback.signupId],
+    references: [signups.id],
+  }),
 }));
 
 export const signupsRelations = relations(signups, ({ one, many }) => ({
@@ -242,6 +321,10 @@ export const signupsRelations = relations(signups, ({ one, many }) => ({
   matchMembership: one(matchMembers, {
     fields: [signups.id],
     references: [matchMembers.signupId],
+  }),
+  feedback: one(feedback, {
+    fields: [signups.id],
+    references: [feedback.signupId],
   }),
 }));
 

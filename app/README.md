@@ -17,9 +17,17 @@ covered by unit tests for everything that doesn't require real
 credentials, but nobody has run it against a real Zoom/Google account yet.
 Run it once for real before trusting it with an actual cohort.
 
-The participant-facing dashboard (Phase 4) is still ahead — see the
-architecture discussion in the repo history / project notes for the full
-roadmap.
+**Phase 4** (done): participant magic-link login + dashboard, feedback
+collection with admin-moderated public testimonials, and reminder emails
+on a scheduled job — see "Participant accounts", "Feedback &
+testimonials", and "Reminder emails" below. Like Phase 3's Zoom/Calendar
+integrations, actual email delivery (magic links, reminders) is
+**unverified against a live Resend account** — the send path degrades to
+logging the email content to the console without one, which is how it's
+been tested so far.
+
+Phase 0 (the marketing site itself) is a separate, independent piece --
+see the repo root README, not this one.
 
 ## Stack
 
@@ -65,6 +73,10 @@ roadmap.
      auth system.
    - `ADMIN_SESSION_SECRET` — random string used to sign the admin session
      cookie. Generate one with `openssl rand -hex 32`.
+   - `PARTICIPANT_SESSION_SECRET` — same idea, for participant magic-link
+     sessions. Deliberately a separate secret from the admin one.
+   - `APP_URL` — this app's own URL, used to build absolute links in
+     emails. Defaults to `http://localhost:3000`.
 
 4. **Apply the database schema**
 
@@ -95,6 +107,9 @@ roadmap.
    - `/admin/export?cohort=N` — CSV export of a cohort's signups
    - `/admin/matching?cohort=N` — generate/review/approve proposed matches
    - `/admin/scheduling?cohort=N` — preview computed session times, then send
+   - `/admin/testimonials` — moderate and publish participant feedback
+   - `/login` → `/dashboard` — participant magic-link sign-in and dashboard
+   - `/feedback` — participant-facing feedback form (requires sign-in)
 
 7. **Run the tests**
 
@@ -102,21 +117,27 @@ roadmap.
    npm test
    ```
 
-   Covers the matching engine only (`lib/matching/**/*.test.ts`) — it's the
-   part with real logic worth pinning down (timezone/DST math, weekly
-   overlap with wraparound, the blossom solver, the odd-person-out trio
-   fallback). Nothing else in the app has meaningful non-UI logic to test
-   yet.
+   Covers everything that's pure logic worth pinning down: the matching
+   engine (`lib/matching/`), the scheduling engine (`lib/scheduling/`),
+   the Zoom/Calendar request payloads and JWT signing
+   (`lib/integrations/`), and the participant session cookie
+   (`lib/participant-auth.ts`). Nothing else in the app has meaningful
+   non-UI/non-DB logic to unit test -- the DB-touching and UI-touching
+   paths have instead been exercised end-to-end against a real Postgres DB
+   and (for the browser-facing flows) a real headless browser session
+   during development, not via an automated E2E suite in this repo yet.
 
 ## Deploying
 
 1. **Vercel project**: import this repo into Vercel, and set the **Root
    Directory** to `app/` in the project settings (this repo also contains
    the unrelated static site at its root, which Vercel should ignore).
-2. **Environment variables**: set `DATABASE_URL`, `ADMIN_PASSWORD`, and
-   `ADMIN_SESSION_SECRET` in the Vercel project settings (Production and
-   Preview). The Zoom/Google/Resend vars from `.env.example` are optional —
-   see "Scheduling engine" below for how to set those up when you're ready.
+2. **Environment variables**: set `DATABASE_URL`, `ADMIN_PASSWORD`,
+   `ADMIN_SESSION_SECRET`, `PARTICIPANT_SESSION_SECRET`, and `APP_URL`
+   (your real `app.pausepal.co` URL) in the Vercel project settings
+   (Production and Preview). The Zoom/Google/Resend/`CRON_SECRET` vars
+   from `.env.example` are optional — see "Scheduling engine" and
+   "Reminder emails" below for how to set those up when you're ready.
 3. **Database**: point `DATABASE_URL` at your production Neon/Supabase
    instance. Run `npx drizzle-kit migrate` against it (locally, with
    `DATABASE_URL` set to the prod connection string) before or right after
@@ -125,6 +146,11 @@ roadmap.
    add the CNAME record it gives you wherever `pausepal.co`'s DNS is
    managed. This does not touch the existing `pausepal.co` GitHub Pages
    setup at the repo root.
+5. **Cron**: `vercel.json` at the app root declares the daily reminders
+   job (`/api/cron/reminders`) -- Vercel picks this up automatically on
+   deploy. Set `CRON_SECRET` (Vercel project settings) so the route can
+   verify requests are actually from Vercel Cron and not the open
+   internet; see "Reminder emails" below.
 
 ## Matching engine
 
@@ -247,6 +273,91 @@ Zoom and Google Calendar; `lib/db/scheduling-queries.ts` wires it together;
 4. Set `GOOGLE_CALENDAR_ID` to that calendar's ID (Calendar Settings →
    that calendar → "Integrate calendar" → Calendar ID).
 
+## Participant accounts
+
+Participants (not admins) sign in via magic link, not a password --
+`lib/participant-auth.ts` (session cookie), `lib/db/auth-queries.ts`
+(token issuance/consumption), `app/login/`, `app/auth/verify/route.ts`,
+`app/dashboard/`.
+
+- **Tokens are hashed at rest.** `createMagicLinkToken` returns the raw
+  token (emailed once, never persisted) and stores only its SHA-256 hash,
+  the same principle as a password hash -- a DB read alone can't be used
+  to sign in as anyone. Tokens expire after 30 minutes and are marked
+  consumed on first use (`consumeMagicLinkToken`), so a link can't be
+  reused, including by an email client that prefetches links.
+- **No email enumeration.** `/login` always shows the same "check your
+  email" response whether or not the address matched a real person --
+  `requestMagicLinkAction` only branches internally.
+- **A separate session cookie and secret from admin.** `proxy.ts` gates
+  `/admin/*` against the admin cookie and `/dashboard/*` +
+  `/feedback/*` against the participant cookie, independently -- an admin
+  session can't be replayed as a participant session or vice versa, even
+  in principle, since they're signed with different secrets
+  (`ADMIN_SESSION_SECRET` vs `PARTICIPANT_SESSION_SECRET`).
+- **Dashboard shows your most relevant signup, not just your latest one**
+  (`lib/db/participant-queries.ts`): a `matched` signup is preferred over
+  a merely `submitted` one even if the submitted one is more recent --
+  someone who's matched in an active cohort came here to see that, not
+  "your signup is in" for a newer cohort they also happen to be in the
+  pool for. Caught by testing against a person who legitimately had
+  signups in two cohorts at once, one matched and one not.
+- **Absolute link generation never trusts the request's Host header**
+  (`lib/site-url.ts`) -- only a fixed `APP_URL` env var. Building an
+  emailed link from a client-supplied header would let someone get
+  PausePal to email a real user a link pointing at an attacker-controlled
+  domain.
+
+## Feedback & testimonials
+
+`lib/db/feedback-queries.ts`; participant-facing form at `app/feedback/`;
+admin moderation at `/admin/testimonials`; public read API at
+`/api/testimonials`.
+
+- Feedback is scoped to a **signup** (one cohort's participation), not the
+  person overall -- `feedback.signup_id` is unique, so re-submitting the
+  form for the same cohort updates rather than duplicates, and someone
+  doing a second cohort later gets a fresh feedback prompt for that one.
+- **Consent to publish is not the same as being published.** Checking the
+  box just makes the feedback eligible for an admin to curate at
+  `/admin/testimonials` -- set a display name (there's no last name
+  collected anywhere in this app, so the suggested default is just their
+  first name; admins can edit it to whatever attribution they want, e.g.
+  "D. Kim") and explicitly publish before it's public.
+- `/api/testimonials` is intentionally open (`Access-Control-Allow-Origin:
+  *`, no auth) -- it only ever returns admin-published, consented
+  testimonials, which is exactly the content Phase 0's marketing site
+  fetches client-side to replace/extend its hardcoded testimonial list.
+
+## Reminder emails
+
+`lib/db/reminder-queries.ts` + `lib/email/`; triggered by
+`/api/cron/reminders`, declared in `vercel.json` (daily).
+
+- Three kinds, each independently idempotent: a session reminder the day
+  before each weekly occurrence (computed via
+  `lib/scheduling/instants.ts`'s `allOccurrences`, so this correctly
+  covers week 2, 3, 4... of a recurring session, not just its first
+  occurrence), a "your cohort starts tomorrow" nudge, and a feedback
+  request the day after a cohort ends.
+- **Idempotency is a DB constraint, not an in-memory check** --
+  `sent_reminders` has a unique index on `(kind, reference_id,
+  occurrence_date)`, and every send goes through `INSERT ... ON CONFLICT
+  DO NOTHING`, checking whether the insert actually happened before
+  emailing anyone. This makes it safe for the cron route to be invoked
+  more than once for the same day (retries, manual re-triggers) without
+  double-emailing -- verified directly against the DB by invoking each
+  reminder function twice for the same date and confirming zero emails
+  sent (and zero new `sent_reminders` rows) the second time.
+- The route itself is protected by `CRON_SECRET`
+  (`app/api/cron/reminders/route.ts`) using [Vercel's documented
+  pattern](https://vercel.com/docs/cron-jobs/manage-cron-jobs#securing-cron-jobs)
+  -- Vercel Cron sends `Authorization: Bearer $CRON_SECRET` automatically
+  once the var is set. The check is skipped in local dev when
+  `CRON_SECRET` isn't set, so you can hit the route directly while
+  testing; verified that unset/wrong secrets get `401` and the correct
+  one gets `200` once `CRON_SECRET` is configured.
+
 ## Data model notes
 
 - **Availability is stored in local time**, not UTC — day-of-week +
@@ -264,10 +375,18 @@ Zoom and Google Calendar; `lib/db/scheduling-queries.ts` wires it together;
 
 ## What's deliberately not here yet
 
-- **Participant-facing dashboard, reminder emails, feedback/testimonials** — Phase 4.
-- **Cohort auto-close / scheduled jobs** — cohorts are opened and closed
-  manually from `/admin` for now.
+- **Cohort auto-close** — cohorts are opened and closed manually from
+  `/admin` for now (the reminder cron job doesn't do this).
 - **Un-approving a match, rescheduling, or handling drop-outs mid-cohort** —
   not built yet. Right now the only way back is direct DB access.
-- **Live verification of the Zoom/Google integrations** — see the Phase 3
-  note at the top of this file.
+- **Live verification of the Zoom/Google/Resend integrations** — see the
+  Phase 3 and Phase 4 notes at the top of this file. All three are
+  implemented against documented APIs and covered by unit tests for
+  everything that doesn't require real credentials, but none have been
+  exercised against a live account.
+- **Automated end-to-end tests** — every flow in this app (signup,
+  matching, scheduling, participant login, feedback) has been manually
+  verified against a real Postgres DB and a real headless browser session
+  during development, but none of that is captured as a repeatable test
+  suite in this repo yet. If this app keeps growing, that's the next
+  investment worth making.
