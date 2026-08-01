@@ -4,10 +4,16 @@ import { getCohortByNumber, listSignupsForCohort } from "@/lib/db/queries";
 import { formatAvailability, SESSION_LENGTH_LABELS, EXPERIENCE_LABELS } from "@/lib/format";
 
 function csvCell(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  // Most of these cells are free text a participant typed. Excel/Sheets
+  // treat a leading =, +, -, @ (or a leading tab/CR) as the start of a
+  // formula, so an unescaped cell is code the admin's spreadsheet runs on
+  // open. Prefixing with an apostrophe forces it back to being text.
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+
+  if (/[",\n]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
   }
-  return value;
+  return safe;
 }
 
 export async function GET(request: NextRequest) {
