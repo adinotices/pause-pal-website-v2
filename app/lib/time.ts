@@ -23,6 +23,19 @@ export function minutesToLabel(minutes: number): string {
   return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
 }
 
+/** Renders a real instant (e.g. a computed session's firstOccurrenceAt) in
+ * a specific person's timezone -- e.g. "Mon, 6:00 AM". Used to show admins
+ * exactly what local time a proposed session lands at for each member,
+ * since a UTC-anchored instant alone doesn't reveal that. */
+export function formatInstantForTimezone(date: Date, timezone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
 /** Best-effort guess at the browser's IANA timezone. Always shown to the
  * user for confirmation rather than trusted blindly. */
 export function guessTimezone(): string {

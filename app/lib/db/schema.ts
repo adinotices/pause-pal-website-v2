@@ -168,6 +168,11 @@ export const matches = pgTable("matches", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  // Phase 3 (scheduling): one Zoom meeting per match, reused across all of
+  // that match's weekly sessions. Null until "send calendar invites" runs.
+  zoomMeetingId: text("zoom_meeting_id"),
+  zoomJoinUrl: text("zoom_join_url"),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
 });
 
 /** A signup should belong to at most one match at a time -- enforced by the
@@ -185,6 +190,29 @@ export const matchMembers = pgTable(
   },
   (table) => [uniqueIndex("match_members_signup_id_idx").on(table.signupId)],
 );
+
+/**
+ * One recurring weekly meeting time for a match (a match with
+ * sessionsPerWeek > 1 has more than one of these). `dayOfWeek` and
+ * `startMinute`/`endMinute` are in the *canonical* shared timeline used by
+ * the matching engine (see lib/matching/availability.ts), not any one
+ * person's local time -- render in each member's own timezone at display
+ * time. `firstOccurrenceAt` is the real UTC instant of the first
+ * occurrence; later occurrences are that plus 7/14/21... days, and
+ * `weekCount` says how many occurrences the program runs for.
+ */
+export const matchSessions = pgTable("match_sessions", {
+  id: serial("id").primaryKey(),
+  matchId: integer("match_id")
+    .notNull()
+    .references(() => matches.id, { onDelete: "cascade" }),
+  dayOfWeek: smallint("day_of_week").notNull(),
+  startMinute: smallint("start_minute").notNull(),
+  endMinute: smallint("end_minute").notNull(),
+  firstOccurrenceAt: timestamp("first_occurrence_at", { withTimezone: true }).notNull(),
+  weekCount: smallint("week_count").notNull(),
+  googleCalendarEventId: text("google_calendar_event_id"),
+});
 
 // --- Relations ---------------------------------------------------------------
 
@@ -240,6 +268,7 @@ export const matchesRelations = relations(matches, ({ one, many }) => ({
     references: [cohorts.id],
   }),
   members: many(matchMembers),
+  sessions: many(matchSessions),
 }));
 
 export const matchMembersRelations = relations(matchMembers, ({ one }) => ({
@@ -250,5 +279,12 @@ export const matchMembersRelations = relations(matchMembers, ({ one }) => ({
   signup: one(signups, {
     fields: [matchMembers.signupId],
     references: [signups.id],
+  }),
+}));
+
+export const matchSessionsRelations = relations(matchSessions, ({ one }) => ({
+  match: one(matches, {
+    fields: [matchSessions.matchId],
+    references: [matches.id],
   }),
 }));

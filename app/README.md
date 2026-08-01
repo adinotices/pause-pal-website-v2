@@ -9,9 +9,17 @@ Pages) — this one deploys independently to Vercel at `app.pausepal.co`.
 list view, replacing the old Formbricks form.
 
 **Phase 2** (done): the matching engine — see "Matching engine" below.
-Zoom/Calendar automation (Phase 3) and the participant-facing dashboard
-(Phase 4) are still ahead — see the architecture discussion in the repo
-history / project notes for the full roadmap.
+
+**Phase 3** (done): Zoom + Google Calendar scheduling automation on
+approved matches — see "Scheduling engine" below. **Unverified against
+live Zoom/Google accounts** — built against their documented APIs and
+covered by unit tests for everything that doesn't require real
+credentials, but nobody has run it against a real Zoom/Google account yet.
+Run it once for real before trusting it with an actual cohort.
+
+The participant-facing dashboard (Phase 4) is still ahead — see the
+architecture discussion in the repo history / project notes for the full
+roadmap.
 
 ## Stack
 
@@ -86,6 +94,7 @@ history / project notes for the full roadmap.
    - `/admin` — cohort management + signup list (password-protected)
    - `/admin/export?cohort=N` — CSV export of a cohort's signups
    - `/admin/matching?cohort=N` — generate/review/approve proposed matches
+   - `/admin/scheduling?cohort=N` — preview computed session times, then send
 
 7. **Run the tests**
 
@@ -106,7 +115,8 @@ history / project notes for the full roadmap.
    the unrelated static site at its root, which Vercel should ignore).
 2. **Environment variables**: set `DATABASE_URL`, `ADMIN_PASSWORD`, and
    `ADMIN_SESSION_SECRET` in the Vercel project settings (Production and
-   Preview).
+   Preview). The Zoom/Google/Resend vars from `.env.example` are optional —
+   see "Scheduling engine" below for how to set those up when you're ready.
 3. **Database**: point `DATABASE_URL` at your production Neon/Supabase
    instance. Run `npx drizzle-kit migrate` against it (locally, with
    `DATABASE_URL` set to the prod connection string) before or right after
@@ -162,6 +172,81 @@ Postgres and `app/admin/matching/` is the review UI.
   → `matched`, cohort → `matched`) — approved matches are permanent and
   untouched by future regeneration.
 
+## Scheduling engine
+
+`lib/scheduling/` is pure logic (tested); `lib/integrations/` talks to
+Zoom and Google Calendar; `lib/db/scheduling-queries.ts` wires it together;
+`/admin/scheduling` is the review UI.
+
+- **Picking session times** (`lib/scheduling/pick-sessions.ts`): re-derives
+  the same weekly overlap the matching engine found for a match (there's no
+  persisted "the overlap was X" record -- it's cheap to rederive and keeps
+  one source of truth) and greedily picks one session per distinct
+  available day before ever repeating a day, up to however many
+  sessions/week the pair agreed to.
+- **Real calendar dates, still DST-safe** (`lib/scheduling/instants.ts`):
+  a chosen weekly slot is still in the matching engine's canonical
+  UTC-equivalent timeline, not a real date. `firstOccurrenceUTC` anchors it
+  to the cohort's actual `startsOn` date -- the first occurrence always
+  lands on or within 6 days after the cohort starts, never before. Later
+  weekly occurrences are handled by Google Calendar's own RRULE, not by us
+  computing 4 separate dates.
+- **One Zoom meeting per match, reused for the whole program**
+  (`lib/integrations/zoom.ts`): a Server-to-Server OAuth app (no per-user
+  consent flow, since nobody's available to click through one for a server
+  automation) creates one recurring, no-fixed-time meeting -- a single
+  stable link for all of a match's sessions.
+- **Calendar invites via a service account, not user OAuth**
+  (`lib/integrations/google-calendar.ts`): same reasoning as Zoom -- no
+  interactive consent flow. A Google Cloud service account is shared onto
+  the target calendar, authenticates itself with a signed JWT, and creates
+  one `RRULE:FREQ=WEEKLY;COUNT=N` event per weekly session with both
+  members as attendees (`sendUpdates=all`) and the Zoom link in the
+  description/location.
+- **Preview before send, always.** `/admin/scheduling` always shows what
+  the computed times *would* be, converted into **each member's own local
+  time** (`lib/time.ts`'s `formatInstantForTimezone`) -- this is the human
+  gate against sending someone a 5am invite, and it's read-only: no
+  external API calls happen until you explicitly click send.
+- **Idempotent, resumable sending**
+  (`lib/db/scheduling-queries.ts#sendScheduleForCohort`): every external
+  side effect is gated on DB state that's checked before acting, so
+  retrying after a partial failure never double-books. A match already
+  marked `scheduledAt` is skipped outright -- confirmed by re-invoking the
+  send path a second time and checking no new session rows or Zoom/Calendar
+  calls happen. If Zoom succeeded but Calendar then threw, re-running
+  reuses the existing Zoom meeting rather than creating a second one, and
+  only retries Calendar. If neither Zoom nor Google is configured, sending
+  still computes and stores the session times (useful on its own -- you
+  can see the schedule and send it manually) and simply skips the external
+  calls.
+
+### Setting up Zoom (optional)
+
+1. In the [Zoom App Marketplace](https://marketplace.zoom.us/), **Develop
+   → Build App → Server-to-Server OAuth**.
+2. Add the `meeting:write:admin` (or `meeting:write`) scope, then activate
+   the app.
+3. Copy the Account ID, Client ID, and Client Secret into `ZOOM_ACCOUNT_ID`
+   / `ZOOM_CLIENT_ID` / `ZOOM_CLIENT_SECRET`.
+4. Set `ZOOM_HOST_EMAIL` to a licensed Zoom user on that account (e.g.
+   `hello@pausepal.co`) -- created meetings belong to this user.
+
+### Setting up Google Calendar (optional)
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), enable the
+   Calendar API for a project, then create a **Service Account** (IAM &
+   Admin → Service Accounts) and generate a JSON key for it.
+2. From that JSON key: `client_email` → `GOOGLE_SERVICE_ACCOUNT_EMAIL`,
+   `private_key` → `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` (paste as-is; the
+   JSON already escapes its newlines as `\n`, which is what this app
+   expects).
+3. In the actual Google Calendar UI, share the target calendar (e.g.
+   `hello@pausepal.co`'s calendar, or a dedicated calendar) with the
+   service account's email, granting **"Make changes to events"**.
+4. Set `GOOGLE_CALENDAR_ID` to that calendar's ID (Calendar Settings →
+   that calendar → "Integrate calendar" → Calendar ID).
+
 ## Data model notes
 
 - **Availability is stored in local time**, not UTC — day-of-week +
@@ -179,10 +264,10 @@ Postgres and `app/admin/matching/` is the review UI.
 
 ## What's deliberately not here yet
 
-- **Zoom + Google Calendar automation** — Phase 3. Approving matches
-  finalizes pairings but doesn't create meetings or send invites yet.
 - **Participant-facing dashboard, reminder emails, feedback/testimonials** — Phase 4.
 - **Cohort auto-close / scheduled jobs** — cohorts are opened and closed
   manually from `/admin` for now.
-- **Un-approving a match / handling drop-outs mid-cohort** — not built yet.
-  Right now the only way back is direct DB access.
+- **Un-approving a match, rescheduling, or handling drop-outs mid-cohort** —
+  not built yet. Right now the only way back is direct DB access.
+- **Live verification of the Zoom/Google integrations** — see the Phase 3
+  note at the top of this file.

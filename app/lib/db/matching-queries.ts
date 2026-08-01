@@ -55,7 +55,7 @@ export async function getPreviousMatchHistoryPairKeys(): Promise<Set<string>> {
   return keys;
 }
 
-function toRawSignupInput(row: {
+export function toRawSignupInput(row: {
   id: number;
   personId: number;
   person: { firstName: string; timezone: string };

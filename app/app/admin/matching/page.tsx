@@ -42,6 +42,12 @@ export default async function MatchingPage({
           </Link>
           <h1 className="mt-1 text-2xl font-semibold">Matching</h1>
         </div>
+        <Link
+          href={`/admin/scheduling${selected ? `?cohort=${selected.number}` : ""}`}
+          className="text-sm text-emerald-700 underline"
+        >
+          Scheduling →
+        </Link>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
