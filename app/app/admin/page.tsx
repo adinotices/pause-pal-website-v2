@@ -125,12 +125,20 @@ export default async function AdminPage({
             <h2 className="font-medium">
               Signups for Cohort {selected.number} ({signups.length})
             </h2>
-            <a
-              href={`/admin/export?cohort=${selected.number}`}
-              className="text-sm text-emerald-700 underline"
-            >
-              Download CSV
-            </a>
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/admin/matching?cohort=${selected.number}`}
+                className="text-sm text-emerald-700 underline"
+              >
+                Matching →
+              </Link>
+              <a
+                href={`/admin/export?cohort=${selected.number}`}
+                className="text-sm text-emerald-700 underline"
+              >
+                Download CSV
+              </a>
+            </div>
           </div>
 
           <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-200">

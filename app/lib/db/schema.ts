@@ -6,6 +6,7 @@ import {
   boolean,
   integer,
   smallint,
+  real,
   pgEnum,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -44,6 +45,8 @@ export const experienceLevelEnum = pgEnum("experience_level", [
   "some_experience",
   "experienced",
 ]);
+
+export const matchStatusEnum = pgEnum("match_status", ["proposed", "approved"]);
 
 // --- Core tables -------------------------------------------------------------
 
@@ -145,10 +148,49 @@ export const preferences = pgTable("preferences", {
   notes: text("notes"),
 });
 
+/**
+ * A proposed or approved meditation pairing (usually 2 people, occasionally
+ * 3 when the cohort has an odd number of matchable signups -- see
+ * lib/matching). `pinned` matches are left untouched when the admin
+ * regenerates proposals for a cohort. `score` and `explanation` are a
+ * snapshot from whenever the match was last (re)computed by the solver;
+ * they aren't recalculated after a manual pin/swap.
+ */
+export const matches = pgTable("matches", {
+  id: serial("id").primaryKey(),
+  cohortId: integer("cohort_id")
+    .notNull()
+    .references(() => cohorts.id, { onDelete: "cascade" }),
+  status: matchStatusEnum("status").notNull().default("proposed"),
+  pinned: boolean("pinned").notNull().default(false),
+  score: real("score").notNull(),
+  explanation: text("explanation").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** A signup should belong to at most one match at a time -- enforced by the
+ * unique index below, not just application logic. */
+export const matchMembers = pgTable(
+  "match_members",
+  {
+    id: serial("id").primaryKey(),
+    matchId: integer("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    signupId: integer("signup_id")
+      .notNull()
+      .references(() => signups.id, { onDelete: "cascade" }),
+  },
+  (table) => [uniqueIndex("match_members_signup_id_idx").on(table.signupId)],
+);
+
 // --- Relations ---------------------------------------------------------------
 
 export const cohortsRelations = relations(cohorts, ({ many }) => ({
   signups: many(signups),
+  matches: many(matches),
 }));
 
 export const peopleRelations = relations(people, ({ many }) => ({
@@ -169,6 +211,10 @@ export const signupsRelations = relations(signups, ({ one, many }) => ({
     fields: [signups.id],
     references: [preferences.signupId],
   }),
+  matchMembership: one(matchMembers, {
+    fields: [signups.id],
+    references: [matchMembers.signupId],
+  }),
 }));
 
 export const availabilitySlotsRelations = relations(
@@ -184,6 +230,25 @@ export const availabilitySlotsRelations = relations(
 export const preferencesRelations = relations(preferences, ({ one }) => ({
   signup: one(signups, {
     fields: [preferences.signupId],
+    references: [signups.id],
+  }),
+}));
+
+export const matchesRelations = relations(matches, ({ one, many }) => ({
+  cohort: one(cohorts, {
+    fields: [matches.cohortId],
+    references: [cohorts.id],
+  }),
+  members: many(matchMembers),
+}));
+
+export const matchMembersRelations = relations(matchMembers, ({ one }) => ({
+  match: one(matches, {
+    fields: [matchMembers.matchId],
+    references: [matches.id],
+  }),
+  signup: one(signups, {
+    fields: [matchMembers.signupId],
     references: [signups.id],
   }),
 }));
