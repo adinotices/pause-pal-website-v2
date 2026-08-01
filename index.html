@@ -5,24 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PausePal - Meditation Accountability (Currently on Pause)</title>
     <meta name="description" content="PausePal is currently on pause. Subscribe to our newsletter to be the first to know when we return. Build a consistent meditation practice with an accountability buddy.">
-    
+    <link rel="canonical" href="https://pausepal.co/">
+    <meta name="theme-color" content="#6366f1">
+
+    <!-- Open Graph / Twitter -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="PausePal">
+    <meta property="og:url" content="https://pausepal.co/">
+    <meta property="og:title" content="PausePal - Meditation Accountability (Currently on Pause)">
+    <meta property="og:description" content="PausePal pairs you with a meditation accountability buddy for a 4-week program. Currently on pause -- subscribe to our newsletter to hear when we return.">
+    <meta property="og:image" content="https://pausepal.co/favicons/android-chrome-512x512.png">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="PausePal - Meditation Accountability (Currently on Pause)">
+    <meta name="twitter:description" content="PausePal pairs you with a meditation accountability buddy for a 4-week program. Currently on pause -- subscribe to our newsletter to hear when we return.">
+    <meta name="twitter:image" content="https://pausepal.co/favicons/android-chrome-512x512.png">
+
     <!-- Favicons -->
     <link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
     <link rel="manifest" href="favicons/site.webmanifest">
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
-    
+
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "PausePal",
+      "url": "https://pausepal.co/",
+      "logo": "https://pausepal.co/favicons/android-chrome-512x512.png",
+      "email": "hello@pausepal.co",
+      "description": "PausePal pairs people with a meditation accountability buddy for a structured 4-week program."
+    }
+    </script>
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
     <!-- Navigation -->
-    <nav class="nav">
+    <nav class="nav" aria-label="Primary">
         <div class="container">
             <div class="nav-content">
                 <div class="logo">
@@ -35,7 +64,13 @@
                     <a href="#testimonials">Testimonials</a>
                     <a href="#newsletter" class="btn-nav">Subscribe to Newsletter</a>
                 </div>
-                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <button
+                    class="mobile-menu-btn"
+                    onclick="toggleMobileMenu()"
+                    aria-label="Toggle menu"
+                    aria-expanded="false"
+                    aria-controls="mobileMenu"
+                >
                     <span></span>
                     <span></span>
                     <span></span>
@@ -52,6 +87,7 @@
         <a href="#newsletter" class="btn-nav" onclick="toggleMobileMenu()">Subscribe to Newsletter</a>
     </div>
 
+    <main id="main-content">
     <!-- Hero Section -->
     <section class="hero">
         <div class="hero-bg">
@@ -85,7 +121,13 @@
                 <div class="hero-image">
                     <div class="image-wrapper">
                         <div class="image-glow"></div>
-                        <img src="https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?w=600&h=600&fit=crop" alt="A meditator about to strike a meditation bell" />
+                        <img
+                            src="https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?w=600&h=600&fit=crop"
+                            alt="A meditator about to strike a meditation bell"
+                            width="600"
+                            height="600"
+                            fetchpriority="high"
+                        />
                     </div>
                 </div>
             </div>
@@ -137,9 +179,9 @@
             </div>
             <div class="faq-grid">
                 <div class="faq-item">
-                    <button class="faq-question" onclick="toggleFaq(this)">
+                    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
                         <span>Who is this program for?</span>
-                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M6 9l6 6 6-6"/>
                         </svg>
                     </button>
@@ -148,9 +190,9 @@
                     </div>
                 </div>
                 <div class="faq-item">
-                    <button class="faq-question" onclick="toggleFaq(this)">
+                    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
                         <span>How much does it cost?</span>
-                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M6 9l6 6 6-6"/>
                         </svg>
                     </button>
@@ -159,9 +201,9 @@
                     </div>
                 </div>
                 <div class="faq-item">
-                    <button class="faq-question" onclick="toggleFaq(this)">
+                    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
                         <span>How often do I need to meditate?</span>
-                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M6 9l6 6 6-6"/>
                         </svg>
                     </button>
@@ -170,9 +212,9 @@
                     </div>
                 </div>
                 <div class="faq-item">
-                    <button class="faq-question" onclick="toggleFaq(this)">
+                    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
                         <span>What type of meditation will we do?</span>
-                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M6 9l6 6 6-6"/>
                         </svg>
                     </button>
@@ -181,9 +223,9 @@
                     </div>
                 </div>
                 <div class="faq-item">
-                    <button class="faq-question" onclick="toggleFaq(this)">
+                    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
                         <span>I'm new to meditation. Is that okay?</span>
-                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M6 9l6 6 6-6"/>
                         </svg>
                     </button>
@@ -192,9 +234,9 @@
                     </div>
                 </div>
                 <div class="faq-item">
-                    <button class="faq-question" onclick="toggleFaq(this)">
+                    <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
                         <span>Who can I contact for help?</span>
-                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M6 9l6 6 6-6"/>
                         </svg>
                     </button>
@@ -216,9 +258,10 @@
             <div class="testimonials-grid">
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★★</span>
+                            <span class="sr-only">Rated 5 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★★</span>
                         </div>
                         <p class="testimonial-text">PausePal is an ingenious, practical tool that has really boosted my meditation consistency! Pairing me with regular meditation partner(s) at regularly scheduled times eliminates my otherwise all too common tendency to postpone or skip sessions. And PausePal is very easy to use.</p>
                     </div>
@@ -229,9 +272,10 @@
                 </div>
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★☆</span>
+                            <span class="sr-only">Rated 4 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★☆</span>
                         </div>
                         <p class="testimonial-text">PausePal was a rewarding opportunity to expand my meditation practice with the support of community. Aditya is a gracious facilitator!</p>
                     </div>
@@ -242,9 +286,10 @@
                 </div>
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★★</span>
+                            <span class="sr-only">Rated 5 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★★</span>
                         </div>
                         <p class="testimonial-text">PausePal has transformed my relationship to meditation. I returned to meditating regularly because of it and my meditation partner made me feel incredibly supported. I am very grateful to PausePal.</p>
                     </div>
@@ -255,9 +300,10 @@
                 </div>
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★★</span>
+                            <span class="sr-only">Rated 5 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★★</span>
                         </div>
                         <p class="testimonial-text">PausePal is exactly what I've been looking for for years. I've been struggling to meditate consistently. I've downloaded apps and I've read the books. This is different. It is such a gentle, loving way to practice meditation as a way of life. And my life is all the better for PausePal. My body feels different and my mind feels different. Thank you to my PausePals!</p>
                     </div>
@@ -268,9 +314,10 @@
                 </div>
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★★</span>
+                            <span class="sr-only">Rated 5 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★★</span>
                         </div>
                         <p class="testimonial-text">PausePal has been such a great experience! It has given me the motivation and structure to integrate meditation into my daily life. Connecting with someone who shares my goal and gently holding each other accountable has been such a uniquely beautiful and intimate experience.</p>
                     </div>
@@ -281,9 +328,10 @@
                 </div>
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★★</span>
+                            <span class="sr-only">Rated 5 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★★</span>
                         </div>
                         <p class="testimonial-text">It got me to actually do the thing I wanted to do, which was meditate consistently.</p>
                     </div>
@@ -294,9 +342,10 @@
                 </div>
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★★</span>
+                            <span class="sr-only">Rated 5 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★★</span>
                         </div>
                         <p class="testimonial-text">PausePal helped me connect to what is important.</p>
                     </div>
@@ -307,9 +356,10 @@
                 </div>
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★★</span>
+                            <span class="sr-only">Rated 5 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★★</span>
                         </div>
                         <p class="testimonial-text">I've appreciated the accountability in taking time out of my day to meditate. It's also been connecting to have my PausePal to check in with in the morning before starting my day.</p>
                     </div>
@@ -320,9 +370,10 @@
                 </div>
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★☆</span>
+                            <span class="sr-only">Rated 4 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★☆</span>
                         </div>
                         <p class="testimonial-text">I noticed myself wanting to sit and practice meditation recently which wasn't always the case prior. By practicing as much as we did, I got to feel how much the practice benefits my life.</p>
                     </div>
@@ -333,9 +384,10 @@
                 </div>
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★☆</span>
+                            <span class="sr-only">Rated 4 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★☆</span>
                         </div>
                         <p class="testimonial-text">The thing that's the most useful about PausePal to me is that you're paired with an actual person. This pairing keeps you accountable. It's helped me with my focus in the morning.</p>
                     </div>
@@ -346,9 +398,10 @@
                 </div>
                 <div class="testimonial-card">
                     <div class="testimonial-content">
-                        <div class="quote-icon">"</div>
+                        <div class="quote-icon" aria-hidden="true">"</div>
                         <div class="testimonial-rating">
-                            <span class="stars">★★★★★</span>
+                            <span class="sr-only">Rated 5 out of 5 stars</span>
+                            <span class="stars" aria-hidden="true">★★★★★</span>
                         </div>
                         <p class="testimonial-text">I'm meditating more!! And I've made a new friend with similar values and priorities!</p>
                     </div>
@@ -389,6 +442,7 @@
             </div>
         </div>
     </section>
+    </main>
 
     <!-- Footer -->
     <footer class="footer">
@@ -416,16 +470,21 @@
     <script>
         document.getElementById('footer-year').textContent = new Date().getFullYear();
 
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
         // Mobile menu toggle
         function toggleMobileMenu() {
             const menu = document.getElementById('mobileMenu');
-            menu.classList.toggle('active');
+            const button = document.querySelector('.mobile-menu-btn');
+            const isOpen = menu.classList.toggle('active');
+            button.setAttribute('aria-expanded', String(isOpen));
         }
 
         // FAQ toggle
         function toggleFaq(button) {
             const faqItem = button.parentElement;
-            faqItem.classList.toggle('active');
+            const isOpen = faqItem.classList.toggle('active');
+            button.setAttribute('aria-expanded', String(isOpen));
         }
 
         // Smooth scroll for anchor links
@@ -435,38 +494,94 @@
                 const target = document.querySelector(this.getAttribute('href'));
                 if (target) {
                     target.scrollIntoView({
-                        behavior: 'smooth',
+                        behavior: prefersReducedMotion ? 'auto' : 'smooth',
                         block: 'start'
                     });
                 }
             });
         });
 
-        // Add scroll animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
+        // Scroll-in animations (skipped entirely for prefers-reduced-motion)
+        if (!prefersReducedMotion) {
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
-            });
-        }, observerOptions);
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, observerOptions);
 
-        // Observe elements for animation
-        document.addEventListener('DOMContentLoaded', () => {
-            const elements = document.querySelectorAll('.step-card, .testimonial-card, .faq-item');
-            elements.forEach(el => {
-                el.style.opacity = '0';
-                el.style.transform = 'translateY(20px)';
-                el.style.transition = 'opacity 0.5s, transform 0.5s';
-                observer.observe(el);
+            document.addEventListener('DOMContentLoaded', () => {
+                const elements = document.querySelectorAll('.step-card, .testimonial-card, .faq-item');
+                elements.forEach(el => {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(20px)';
+                    el.style.transition = 'opacity 0.5s, transform 0.5s';
+                    observer.observe(el);
+                });
             });
-        });
+        }
+
+        // Live testimonials: augment the hardcoded list above with anything
+        // published via the app's admin (see app/README.md's "Feedback &
+        // testimonials" section). Fails silently -- the app isn't always
+        // deployed, and the hardcoded testimonials are a perfectly good
+        // fallback on their own.
+        (function loadLiveTestimonials() {
+            const TESTIMONIALS_API = 'https://app.pausepal.co/api/testimonials';
+            const grid = document.querySelector('.testimonials-grid');
+            if (!grid) return;
+
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4000);
+
+            fetch(TESTIMONIALS_API, { signal: controller.signal })
+                .then(res => (res.ok ? res.json() : null))
+                .then(data => {
+                    if (!data || !Array.isArray(data.testimonials)) return;
+                    for (const t of data.testimonials) {
+                        if (!t || !t.text || !t.displayName || !t.rating) continue;
+                        grid.appendChild(buildTestimonialCard(t));
+                    }
+                })
+                .catch(() => {
+                    // Offline, not deployed yet, CORS issue, whatever -- the
+                    // static testimonials above are already on the page.
+                })
+                .finally(() => clearTimeout(timeout));
+        })();
+
+        function buildTestimonialCard(t) {
+            const rating = Math.max(1, Math.min(5, Math.round(Number(t.rating) || 5)));
+            const card = document.createElement('div');
+            card.className = 'testimonial-card';
+            card.innerHTML = `
+                <div class="testimonial-content">
+                    <div class="quote-icon" aria-hidden="true">"</div>
+                    <div class="testimonial-rating">
+                        <span class="sr-only">Rated ${rating} out of 5 stars</span>
+                        <span class="stars" aria-hidden="true">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</span>
+                    </div>
+                    <p class="testimonial-text"></p>
+                </div>
+                <div class="testimonial-author">
+                    <div class="author-avatar" aria-hidden="true"></div>
+                    <span></span>
+                </div>
+            `;
+            // Set text content via DOM APIs, not innerHTML, so testimonial
+            // text from the API can never inject markup onto the page.
+            card.querySelector('.testimonial-text').textContent = t.text;
+            card.querySelector('.author-avatar').textContent = t.displayName.slice(0, 2).toUpperCase();
+            card.querySelector('.testimonial-author span').textContent = t.displayName;
+            return card;
+        }
     </script>
 </body>
 </html>

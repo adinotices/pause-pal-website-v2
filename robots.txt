@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pausepal.co/sitemap.xml

@@ -31,7 +31,7 @@ jobs:
         # static marketing site to GitHub Pages, not the whole repo root.
         run: |
           mkdir dist
-          cp index.html commit.html styles.css turtle.svg CNAME dist/
+          cp index.html commit.html styles.css turtle.svg CNAME robots.txt sitemap.xml dist/
           cp -r favicons dist/
 
       - name: Setup Pages
