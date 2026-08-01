@@ -64,33 +64,39 @@ export default async function DashboardPage() {
                   ))}
                 </p>
 
-                {match.zoomJoinUrl ? (
-                  <a
-                    href={match.zoomJoinUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-block rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-                  >
-                    Join on Zoom
-                  </a>
-                ) : (
+                {match.sessions.length === 0 ? (
                   <p className="mt-3 text-sm text-amber-700">
                     Your schedule is still being finalized -- check back soon.
                   </p>
-                )}
+                ) : (
+                  <>
+                    {match.zoomJoinUrl ? (
+                      <a
+                        href={match.zoomJoinUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-block rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                      >
+                        Join on Zoom
+                      </a>
+                    ) : (
+                      <p className="mt-3 text-sm text-amber-700">
+                        Your session times are set -- your Zoom link is coming soon.
+                      </p>
+                    )}
 
-                {match.sessions.length > 0 && (
-                  <div className="mt-4">
-                    <h3 className="text-sm font-medium text-neutral-700">Weekly sessions</h3>
-                    <ul className="mt-1 space-y-1 text-sm text-neutral-600">
-                      {match.sessions.map((s) => (
-                        <li key={s.id}>
-                          {formatInstantForTimezone(s.firstOccurrenceAt, person.timezone)} (
-                          {person.timezone})
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                    <div className="mt-4">
+                      <h3 className="text-sm font-medium text-neutral-700">Weekly sessions</h3>
+                      <ul className="mt-1 space-y-1 text-sm text-neutral-600">
+                        {match.sessions.map((s) => (
+                          <li key={s.id}>
+                            {formatInstantForTimezone(s.firstOccurrenceAt, person.timezone)} (
+                            {person.timezone})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </>
                 )}
 
                 <Link
