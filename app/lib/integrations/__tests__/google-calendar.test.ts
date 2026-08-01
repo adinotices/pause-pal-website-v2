@@ -73,7 +73,23 @@ describe("buildEventPayload", () => {
       { email: "alice@example.com" },
       { email: "bob@example.com" },
     ]);
-    expect(payload.start).toEqual({ dateTime: "2026-10-05T06:00:00.000Z" });
     expect(payload.description).toContain("zoom.us");
+  });
+
+  // Google's Calendar API documents start.timeZone/end.timeZone as
+  // *required* for recurring events ("specifies the time zone in which the
+  // recurrence is expanded"), so omitting it would fail every send.
+  it("sends an explicit timeZone on start and end, as recurring events require", () => {
+    const payload = buildEventPayload({
+      summary: "PausePal: Alice & Bob",
+      description: "Join via Zoom: https://zoom.us/j/123",
+      startISO: "2026-10-05T06:00:00.000Z",
+      endISO: "2026-10-05T06:15:00.000Z",
+      attendeeEmails: ["alice@example.com"],
+      weekCount: 4,
+    });
+
+    expect(payload.start).toEqual({ dateTime: "2026-10-05T06:00:00.000Z", timeZone: "UTC" });
+    expect(payload.end).toEqual({ dateTime: "2026-10-05T06:15:00.000Z", timeZone: "UTC" });
   });
 });

@@ -47,24 +47,36 @@ export type CalendarEventInput = {
   summary: string;
   description: string;
   location?: string;
-  /** RFC3339 instants (e.g. from Date#toISOString(), which always
-   * includes a UTC offset) -- Google's API requires the offset be present
-   * either way, so there's no separate timeZone field to set. */
+  /** RFC3339 instants (e.g. from Date#toISOString(), which always includes
+   * a UTC offset). A `timeZone` is sent alongside these regardless --
+   * Google *requires* it on recurring events, since it's the zone the
+   * RRULE is expanded in (see buildEventPayload). */
   startISO: string;
   endISO: string;
   attendeeEmails: string[];
   weekCount: number;
 };
 
-/** Pure: the Calendar API request body. Split out from the network call so
- * it's testable without hitting Google. */
+/**
+ * Pure: the Calendar API request body. Split out from the network call so
+ * it's testable without hitting Google.
+ *
+ * `start.timeZone`/`end.timeZone` are **required** by the Calendar API for
+ * recurring events -- it's the zone the RRULE gets expanded in, and Google
+ * rejects a recurring event without it. UTC is the right value here
+ * specifically because the rest of the scheduling engine treats weekly
+ * occurrences as "first occurrence + exactly 7 days" in real time
+ * (lib/scheduling/instants.ts#allOccurrences); expanding the RRULE in any
+ * other zone would make Calendar and the reminder emails disagree about
+ * when week 2+ actually happens.
+ */
 export function buildEventPayload(input: CalendarEventInput) {
   return {
     summary: input.summary,
     description: input.description,
     location: input.location,
-    start: { dateTime: input.startISO },
-    end: { dateTime: input.endISO },
+    start: { dateTime: input.startISO, timeZone: "UTC" },
+    end: { dateTime: input.endISO, timeZone: "UTC" },
     attendees: input.attendeeEmails.map((email) => ({ email })),
     recurrence: [`RRULE:FREQ=WEEKLY;COUNT=${input.weekCount}`],
     reminders: { useDefault: true },
