@@ -9,8 +9,9 @@ import {
   real,
   pgEnum,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // --- Enums -----------------------------------------------------------------
 
@@ -55,18 +56,30 @@ export const matchStatusEnum = pgEnum("match_status", ["proposed", "approved"]);
  * "Cohort 8" naming used historically in commit messages / the old Formbricks
  * form links.
  */
-export const cohorts = pgTable("cohorts", {
-  id: serial("id").primaryKey(),
-  number: integer("number").notNull().unique(),
-  state: cohortStateEnum("state").notNull().default("draft"),
-  signupOpensAt: timestamp("signup_opens_at", { withTimezone: true }),
-  signupDeadlineAt: timestamp("signup_deadline_at", { withTimezone: true }),
-  startsOn: text("starts_on"), // ISO date (YYYY-MM-DD), cohort's local "day one"
-  endsOn: text("ends_on"), // ISO date (YYYY-MM-DD)
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const cohorts = pgTable(
+  "cohorts",
+  {
+    id: serial("id").primaryKey(),
+    number: integer("number").notNull().unique(),
+    state: cohortStateEnum("state").notNull().default("draft"),
+    signupOpensAt: timestamp("signup_opens_at", { withTimezone: true }),
+    signupDeadlineAt: timestamp("signup_deadline_at", { withTimezone: true }),
+    startsOn: text("starts_on"), // ISO date (YYYY-MM-DD), cohort's local "day one"
+    endsOn: text("ends_on"), // ISO date (YYYY-MM-DD)
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // getOpenCohort()/the signup flow assume at most one open cohort at a
+    // time (createCohortAction already closes any prior open one before
+    // opening a new one) -- this makes that a real DB guarantee rather
+    // than just an admin-UI convention nothing else enforces.
+    uniqueIndex("cohorts_single_open_idx")
+      .on(table.state)
+      .where(sql`${table.state} = 'open'`),
+  ],
+);
 
 /** A person, deduplicated by email across cohorts. */
 export const people = pgTable(
@@ -109,6 +122,9 @@ export const signups = pgTable(
       table.cohortId,
       table.personId,
     ),
+    // The composite index above only helps lookups that specify cohortId;
+    // getDashboardDataForPerson and friends look up by personId alone.
+    index("signups_person_id_idx").on(table.personId),
   ],
 );
 
@@ -118,15 +134,19 @@ export const signups = pgTable(
  * dayOfWeek: 0 = Sunday .. 6 = Saturday, matching JS Date#getDay().
  * startMinute/endMinute: minutes since local midnight, [0, 1440).
  */
-export const availabilitySlots = pgTable("availability_slots", {
-  id: serial("id").primaryKey(),
-  signupId: integer("signup_id")
-    .notNull()
-    .references(() => signups.id, { onDelete: "cascade" }),
-  dayOfWeek: smallint("day_of_week").notNull(),
-  startMinute: smallint("start_minute").notNull(),
-  endMinute: smallint("end_minute").notNull(),
-});
+export const availabilitySlots = pgTable(
+  "availability_slots",
+  {
+    id: serial("id").primaryKey(),
+    signupId: integer("signup_id")
+      .notNull()
+      .references(() => signups.id, { onDelete: "cascade" }),
+    dayOfWeek: smallint("day_of_week").notNull(),
+    startMinute: smallint("start_minute").notNull(),
+    endMinute: smallint("end_minute").notNull(),
+  },
+  (table) => [index("availability_slots_signup_id_idx").on(table.signupId)],
+);
 
 /** Matching + program preferences for a single signup. */
 export const preferences = pgTable("preferences", {
@@ -156,29 +176,33 @@ export const preferences = pgTable("preferences", {
  * snapshot from whenever the match was last (re)computed by the solver;
  * they aren't recalculated after a manual pin/swap.
  */
-export const matches = pgTable("matches", {
-  id: serial("id").primaryKey(),
-  cohortId: integer("cohort_id")
-    .notNull()
-    .references(() => cohorts.id, { onDelete: "cascade" }),
-  status: matchStatusEnum("status").notNull().default("proposed"),
-  pinned: boolean("pinned").notNull().default(false),
-  score: real("score").notNull(),
-  explanation: text("explanation").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  // Phase 3 (scheduling): one Zoom meeting per match, reused across all of
-  // that match's weekly sessions. Null until "send calendar invites" runs.
-  zoomMeetingId: text("zoom_meeting_id"),
-  zoomJoinUrl: text("zoom_join_url"),
-  // Timestamp of the last time "send calendar invites" ran for this match
-  // -- NOT proof that it fully succeeded (Zoom/Calendar may have been
-  // unconfigured, or partially failed). Whether a match still needs work
-  // is computed fresh from its actual state each time; see
-  // lib/db/scheduling-queries.ts#isFullyProcessed.
-  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
-});
+export const matches = pgTable(
+  "matches",
+  {
+    id: serial("id").primaryKey(),
+    cohortId: integer("cohort_id")
+      .notNull()
+      .references(() => cohorts.id, { onDelete: "cascade" }),
+    status: matchStatusEnum("status").notNull().default("proposed"),
+    pinned: boolean("pinned").notNull().default(false),
+    score: real("score").notNull(),
+    explanation: text("explanation").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // Phase 3 (scheduling): one Zoom meeting per match, reused across all of
+    // that match's weekly sessions. Null until "send calendar invites" runs.
+    zoomMeetingId: text("zoom_meeting_id"),
+    zoomJoinUrl: text("zoom_join_url"),
+    // Timestamp of the last time "send calendar invites" ran for this match
+    // -- NOT proof that it fully succeeded (Zoom/Calendar may have been
+    // unconfigured, or partially failed). Whether a match still needs work
+    // is computed fresh from its actual state each time; see
+    // lib/db/scheduling-queries.ts#isFullyProcessed.
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+  },
+  (table) => [index("matches_cohort_id_idx").on(table.cohortId)],
+);
 
 /** A signup should belong to at most one match at a time -- enforced by the
  * unique index below, not just application logic. */
@@ -193,7 +217,10 @@ export const matchMembers = pgTable(
       .notNull()
       .references(() => signups.id, { onDelete: "cascade" }),
   },
-  (table) => [uniqueIndex("match_members_signup_id_idx").on(table.signupId)],
+  (table) => [
+    uniqueIndex("match_members_signup_id_idx").on(table.signupId),
+    index("match_members_match_id_idx").on(table.matchId),
+  ],
 );
 
 /**
@@ -206,18 +233,22 @@ export const matchMembers = pgTable(
  * occurrence; later occurrences are that plus 7/14/21... days, and
  * `weekCount` says how many occurrences the program runs for.
  */
-export const matchSessions = pgTable("match_sessions", {
-  id: serial("id").primaryKey(),
-  matchId: integer("match_id")
-    .notNull()
-    .references(() => matches.id, { onDelete: "cascade" }),
-  dayOfWeek: smallint("day_of_week").notNull(),
-  startMinute: smallint("start_minute").notNull(),
-  endMinute: smallint("end_minute").notNull(),
-  firstOccurrenceAt: timestamp("first_occurrence_at", { withTimezone: true }).notNull(),
-  weekCount: smallint("week_count").notNull(),
-  googleCalendarEventId: text("google_calendar_event_id"),
-});
+export const matchSessions = pgTable(
+  "match_sessions",
+  {
+    id: serial("id").primaryKey(),
+    matchId: integer("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    dayOfWeek: smallint("day_of_week").notNull(),
+    startMinute: smallint("start_minute").notNull(),
+    endMinute: smallint("end_minute").notNull(),
+    firstOccurrenceAt: timestamp("first_occurrence_at", { withTimezone: true }).notNull(),
+    weekCount: smallint("week_count").notNull(),
+    googleCalendarEventId: text("google_calendar_event_id"),
+  },
+  (table) => [index("match_sessions_match_id_idx").on(table.matchId)],
+);
 
 /**
  * A single-use magic-link sign-in token for the participant dashboard.
@@ -225,16 +256,20 @@ export const matchSessions = pgTable("match_sessions", {
  * password hash -- so a DB read alone can't be used to sign in as anyone;
  * the raw token only ever exists in the emailed link.
  */
-export const magicLinkTokens = pgTable("magic_link_tokens", {
-  id: serial("id").primaryKey(),
-  personId: integer("person_id")
-    .notNull()
-    .references(() => people.id, { onDelete: "cascade" }),
-  tokenHash: text("token_hash").notNull().unique(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  consumedAt: timestamp("consumed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const magicLinkTokens = pgTable(
+  "magic_link_tokens",
+  {
+    id: serial("id").primaryKey(),
+    personId: integer("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("magic_link_tokens_person_id_idx").on(table.personId)],
+);
 
 /**
  * End-of-program feedback for one signup (a person can give feedback once

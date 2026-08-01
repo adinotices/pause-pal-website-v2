@@ -78,16 +78,19 @@ export type OverlapSummary = {
   totalOverlapMinutes: number;
   /** How many independent sessions of `minSessionMinutes` fit across all
    * overlap windows combined -- i.e. how many distinct weekly meeting slots
-   * of at least that length this pair could actually use. */
+   * of at least that length this group could actually use. */
   sessionsAvailable: number;
 };
 
+/** Summarizes the shared availability across two or more people's
+ * canonical interval sets (a pair is the common case; a trio -- see
+ * lib/matching/solve.ts's odd-person-out fallback -- reduces all three
+ * pairwise via the same intersectIntervals used here). */
 export function summarizeOverlap(
-  a: WeeklyInterval[],
-  b: WeeklyInterval[],
+  intervalSets: WeeklyInterval[][],
   minSessionMinutes: number,
 ): OverlapSummary {
-  const windows = intersectIntervals(a, b);
+  const windows = intervalSets.reduce(intersectIntervals);
   let totalOverlapMinutes = 0;
   let sessionsAvailable = 0;
   for (const w of windows) {

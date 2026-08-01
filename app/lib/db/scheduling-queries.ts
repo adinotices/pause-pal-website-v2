@@ -216,5 +216,15 @@ export async function sendScheduleForCohort(cohortId: number): Promise<SendSched
     }
   }
 
+  // Advance the cohort's state once every approved match is genuinely
+  // done -- not just "we tried" (an error still leaves the cohort at
+  // `matched` so it's obvious there's follow-up needed). Only moves
+  // forward from `matched`; never overwrites a later state (e.g. if this
+  // somehow re-runs after the cohort has already started running).
+  const anyErrors = results.some((r) => r.status === "error");
+  if (!anyErrors && results.length > 0 && cohort.state === "matched") {
+    await db.update(cohorts).set({ state: "scheduled" }).where(eq(cohorts.id, cohortId));
+  }
+
   return results;
 }

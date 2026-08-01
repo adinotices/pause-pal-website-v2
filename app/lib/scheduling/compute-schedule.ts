@@ -1,4 +1,4 @@
-import { intersectIntervals } from "@/lib/matching/availability";
+import { summarizeOverlap } from "@/lib/matching/availability";
 import { buildCandidate, type RawSignupInput } from "@/lib/matching/candidate";
 import { SESSION_LENGTH_MINUTES } from "@/lib/matching/types";
 import { pickSessionTimes, type CanonicalSessionSlot } from "./pick-sessions";
@@ -23,14 +23,16 @@ export function computeMatchSchedule(
   if (members.length < 2) return [];
 
   const candidates = members.map((m) => buildCandidate(m, cohortStartsOn));
-  const overlapWindows = candidates
-    .map((c) => c.canonicalAvailability)
-    .reduce((acc, next) => intersectIntervals(acc, next));
 
   const effectiveSessionMinutes = Math.min(
     ...candidates.map((c) => SESSION_LENGTH_MINUTES[c.sessionLength]),
   );
   const desiredSessions = Math.min(...candidates.map((c) => c.sessionsPerWeek));
+
+  const { windows: overlapWindows } = summarizeOverlap(
+    candidates.map((c) => c.canonicalAvailability),
+    effectiveSessionMinutes,
+  );
 
   const slots = pickSessionTimes(overlapWindows, effectiveSessionMinutes, desiredSessions);
 

@@ -1,4 +1,4 @@
-import { intersectIntervals, type WeeklyInterval } from "./availability";
+import { summarizeOverlap, type WeeklyInterval } from "./availability";
 import { checkGenderPreference } from "./gender";
 import {
   EXPERIENCE_RANK,
@@ -88,14 +88,10 @@ export function evaluateGroup(
   );
   const desiredSessions = Math.min(...members.map((m) => m.sessionsPerWeek));
 
-  const overlapWindows = members
-    .map((m) => m.canonicalAvailability)
-    .reduce((acc, next) => intersectIntervals(acc, next));
-
-  let sessionsAvailable = 0;
-  for (const w of overlapWindows) {
-    sessionsAvailable += Math.floor((w.end - w.start) / effectiveSessionMinutes);
-  }
+  const { windows: overlapWindows, sessionsAvailable } = summarizeOverlap(
+    members.map((m) => m.canonicalAvailability),
+    effectiveSessionMinutes,
+  );
 
   if (sessionsAvailable === 0) {
     return infeasible("No shared weekly time long enough for even one session");

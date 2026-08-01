@@ -89,7 +89,7 @@ describe("summarizeOverlap", () => {
   it("counts how many sessions of a given length fit in the overlap", () => {
     const a = [{ start: 0, end: 100 }]; // 100 minutes
     const b = [{ start: 0, end: 100 }];
-    const summary = summarizeOverlap(a, b, 30);
+    const summary = summarizeOverlap([a, b], 30);
     expect(summary.totalOverlapMinutes).toBe(100);
     expect(summary.sessionsAvailable).toBe(3); // floor(100/30)
   });
@@ -97,7 +97,16 @@ describe("summarizeOverlap", () => {
   it("returns zero sessions when the overlap is shorter than one session", () => {
     const a = [{ start: 0, end: 10 }];
     const b = [{ start: 0, end: 10 }];
-    const summary = summarizeOverlap(a, b, 30);
+    const summary = summarizeOverlap([a, b], 30);
     expect(summary.sessionsAvailable).toBe(0);
+  });
+
+  it("reduces three-way overlap the same way evaluateGroup does for a trio", () => {
+    const a = [{ start: 0, end: 100 }];
+    const b = [{ start: 50, end: 150 }];
+    const c = [{ start: 80, end: 200 }];
+    const summary = summarizeOverlap([a, b, c], 10);
+    expect(summary.windows).toEqual([{ start: 80, end: 100 }]);
+    expect(summary.sessionsAvailable).toBe(2);
   });
 });
