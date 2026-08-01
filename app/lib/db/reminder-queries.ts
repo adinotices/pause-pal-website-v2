@@ -15,21 +15,39 @@ function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Records that a reminder went out, relying on the DB's unique
- * constraint (not an application-level check) to make this race-safe --
- * returns true only if this call actually inserted the row (i.e. it's the
- * first time), false if it was already sent. */
-async function tryRecordSent(
+async function wasAlreadySent(
   kind: string,
   referenceId: number,
   occurrenceDate: string,
 ): Promise<boolean> {
-  const inserted = await db
-    .insert(sentReminders)
-    .values({ kind, referenceId, occurrenceDate })
-    .onConflictDoNothing()
-    .returning();
-  return inserted.length > 0;
+  const rows = await db
+    .select({ id: sentReminders.id })
+    .from(sentReminders)
+    .where(
+      and(
+        eq(sentReminders.kind, kind),
+        eq(sentReminders.referenceId, referenceId),
+        eq(sentReminders.occurrenceDate, occurrenceDate),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** Records a reminder batch as sent. Relies on the DB's unique constraint
+ * (not an application-level check) as the actual race guard -- called
+ * only *after* every email in the batch has gone out successfully (see
+ * each send function below), so a batch that throws partway through is
+ * never recorded and will be retried in full on the next invocation. That
+ * trades "a batch that partially succeeded then failed might re-send to
+ * whoever already got it" for "a transient failure doesn't silently and
+ * permanently lose that reminder" -- an occasional duplicate reminder is
+ * far less bad than nobody hearing about it at all. This app runs the
+ * reminder job as a single daily cron invocation with no expected
+ * concurrency, so the read-then-send-then-write pattern here doesn't need
+ * to be atomic against a second, simultaneous run. */
+async function recordSent(kind: string, referenceId: number, occurrenceDate: string): Promise<void> {
+  await db.insert(sentReminders).values({ kind, referenceId, occurrenceDate }).onConflictDoNothing();
 }
 
 export type ReminderResult = { emailsSent: number };
@@ -54,24 +72,27 @@ export async function sendSessionReminders(targetDate: Date): Promise<ReminderRe
         (o) => toISODate(o) === targetISO,
       );
       if (!occurrence) continue;
+      if (await wasAlreadySent("session_reminder", session.id, targetISO)) continue;
 
-      const isFirstSend = await tryRecordSent("session_reminder", session.id, targetISO);
-      if (!isFirstSend) continue;
+      try {
+        for (const member of match.members) {
+          const recipient = member.signup.person;
+          const partnerFirstNames = match.members
+            .filter((m) => m.signup.personId !== recipient.id)
+            .map((m) => m.signup.person.firstName);
 
-      for (const member of match.members) {
-        const recipient = member.signup.person;
-        const partnerFirstNames = match.members
-          .filter((m) => m.signup.personId !== recipient.id)
-          .map((m) => m.signup.person.firstName);
-
-        const { subject, html, text } = sessionReminderEmail({
-          firstName: recipient.firstName,
-          partnerFirstNames,
-          whenLocal: formatInstantForTimezone(occurrence, recipient.timezone),
-          zoomJoinUrl: match.zoomJoinUrl,
-        });
-        await sendEmail({ to: recipient.email, subject, html, text });
-        emailsSent++;
+          const { subject, html, text } = sessionReminderEmail({
+            firstName: recipient.firstName,
+            partnerFirstNames,
+            whenLocal: formatInstantForTimezone(occurrence, recipient.timezone),
+            zoomJoinUrl: match.zoomJoinUrl,
+          });
+          await sendEmail({ to: recipient.email, subject, html, text });
+          emailsSent++;
+        }
+        await recordSent("session_reminder", session.id, targetISO);
+      } catch (err) {
+        console.error(`Failed to send session reminder for session ${session.id}`, err);
       }
     }
   }
@@ -87,20 +108,24 @@ export async function sendCohortStartReminders(targetDate: Date): Promise<Remind
 
   const dueCohorts = await db.select().from(cohorts).where(eq(cohorts.startsOn, targetISO));
   for (const cohort of dueCohorts) {
-    const isFirstSend = await tryRecordSent("cohort_starts_tomorrow", cohort.id, targetISO);
-    if (!isFirstSend) continue;
+    if (await wasAlreadySent("cohort_starts_tomorrow", cohort.id, targetISO)) continue;
 
-    const matchedSignups = await db.query.signups.findMany({
-      where: and(eq(signups.cohortId, cohort.id), eq(signups.status, "matched")),
-      with: { person: true },
-    });
-    for (const s of matchedSignups) {
-      const { subject, html, text } = cohortStartsTomorrowEmail({
-        firstName: s.person.firstName,
-        cohortNumber: cohort.number,
+    try {
+      const matchedSignups = await db.query.signups.findMany({
+        where: and(eq(signups.cohortId, cohort.id), eq(signups.status, "matched")),
+        with: { person: true },
       });
-      await sendEmail({ to: s.person.email, subject, html, text });
-      emailsSent++;
+      for (const s of matchedSignups) {
+        const { subject, html, text } = cohortStartsTomorrowEmail({
+          firstName: s.person.firstName,
+          cohortNumber: cohort.number,
+        });
+        await sendEmail({ to: s.person.email, subject, html, text });
+        emailsSent++;
+      }
+      await recordSent("cohort_starts_tomorrow", cohort.id, targetISO);
+    } catch (err) {
+      console.error(`Failed to send cohort-start reminders for cohort ${cohort.id}`, err);
     }
   }
 
@@ -115,20 +140,24 @@ export async function sendFeedbackAskReminders(targetDate: Date): Promise<Remind
 
   const dueCohorts = await db.select().from(cohorts).where(eq(cohorts.endsOn, targetISO));
   for (const cohort of dueCohorts) {
-    const isFirstSend = await tryRecordSent("feedback_ask", cohort.id, targetISO);
-    if (!isFirstSend) continue;
+    if (await wasAlreadySent("feedback_ask", cohort.id, targetISO)) continue;
 
-    const matchedSignups = await db.query.signups.findMany({
-      where: and(eq(signups.cohortId, cohort.id), eq(signups.status, "matched")),
-      with: { person: true },
-    });
-    for (const s of matchedSignups) {
-      const { subject, html, text } = feedbackAskEmail({
-        firstName: s.person.firstName,
-        feedbackUrl: `${getAppUrl()}/feedback`,
+    try {
+      const matchedSignups = await db.query.signups.findMany({
+        where: and(eq(signups.cohortId, cohort.id), eq(signups.status, "matched")),
+        with: { person: true },
       });
-      await sendEmail({ to: s.person.email, subject, html, text });
-      emailsSent++;
+      for (const s of matchedSignups) {
+        const { subject, html, text } = feedbackAskEmail({
+          firstName: s.person.firstName,
+          feedbackUrl: `${getAppUrl()}/feedback`,
+        });
+        await sendEmail({ to: s.person.email, subject, html, text });
+        emailsSent++;
+      }
+      await recordSent("feedback_ask", cohort.id, targetISO);
+    } catch (err) {
+      console.error(`Failed to send feedback-ask reminders for cohort ${cohort.id}`, err);
     }
   }
 
