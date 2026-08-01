@@ -2,13 +2,29 @@
  * sending logic (lib/email/resend.ts) so the content itself is easy to
  * read and change without touching any network code. */
 
+/**
+ * Escapes a value before it's interpolated into an email's HTML body.
+ * Several of these values are attacker-controllable free text from the
+ * signup form (first names, most obviously) and land in *someone else's*
+ * inbox -- a partner named `<a href="http://evil">click</a>` should show
+ * up as that literal text, not as a link in their session reminder.
+ */
+function esc(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function magicLinkEmail(url: string): { subject: string; html: string; text: string } {
   return {
     subject: "Your PausePal sign-in link",
     text: `Sign in to PausePal: ${url}\n\nThis link expires in 30 minutes and can only be used once.`,
     html: `
       <p>Sign in to PausePal by clicking the link below.</p>
-      <p><a href="${url}">${url}</a></p>
+      <p><a href="${esc(url)}">${esc(url)}</a></p>
       <p>This link expires in 30 minutes and can only be used once.</p>
     `.trim(),
   };
@@ -28,9 +44,9 @@ export function sessionReminderEmail(input: {
     subject: `Meditation with ${partners} tomorrow`,
     text: `Hi ${input.firstName},\n\nJust a reminder: you're meditating with ${partners} tomorrow at ${input.whenLocal}.\n\n${joinLine}`,
     html: `
-      <p>Hi ${input.firstName},</p>
-      <p>Just a reminder: you're meditating with <strong>${partners}</strong> tomorrow at <strong>${input.whenLocal}</strong>.</p>
-      <p>${input.zoomJoinUrl ? `<a href="${input.zoomJoinUrl}">Join on Zoom</a>` : joinLine}</p>
+      <p>Hi ${esc(input.firstName)},</p>
+      <p>Just a reminder: you're meditating with <strong>${esc(partners)}</strong> tomorrow at <strong>${esc(input.whenLocal)}</strong>.</p>
+      <p>${input.zoomJoinUrl ? `<a href="${esc(input.zoomJoinUrl)}">Join on Zoom</a>` : esc(joinLine)}</p>
     `.trim(),
   };
 }
@@ -43,7 +59,7 @@ export function cohortStartsTomorrowEmail(input: {
     subject: "Your PausePal cohort starts tomorrow",
     text: `Hi ${input.firstName},\n\nCohort ${input.cohortNumber} starts tomorrow! Check your dashboard for your match and session times.`,
     html: `
-      <p>Hi ${input.firstName},</p>
+      <p>Hi ${esc(input.firstName)},</p>
       <p>Cohort ${input.cohortNumber} starts tomorrow! Check your dashboard for your match and session times.</p>
     `.trim(),
   };
@@ -57,9 +73,9 @@ export function feedbackAskEmail(input: {
     subject: "How was your PausePal experience?",
     text: `Hi ${input.firstName},\n\nYour PausePal cohort has wrapped up -- we'd love to hear how it went: ${input.feedbackUrl}`,
     html: `
-      <p>Hi ${input.firstName},</p>
+      <p>Hi ${esc(input.firstName)},</p>
       <p>Your PausePal cohort has wrapped up -- we'd love to hear how it went.</p>
-      <p><a href="${input.feedbackUrl}">Share your feedback</a></p>
+      <p><a href="${esc(input.feedbackUrl)}">Share your feedback</a></p>
     `.trim(),
   };
 }
