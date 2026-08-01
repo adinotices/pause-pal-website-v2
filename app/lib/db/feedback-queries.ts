@@ -68,6 +68,14 @@ export async function setFeedbackPublication(
 
 export type PublicTestimonial = { displayName: string; rating: number; text: string };
 
+/**
+ * `consentToPublish` is re-checked here, not just at publish time: a
+ * participant can re-submit the feedback form with the consent box
+ * unticked, which flips `consentToPublish` back to false but leaves the
+ * admin's earlier `published` flag alone. Filtering on consent at read
+ * time is what makes withdrawing consent actually take the testimonial
+ * off the marketing site.
+ */
 export async function listPublishedTestimonials(): Promise<PublicTestimonial[]> {
   const rows = await db
     .select({
@@ -76,7 +84,13 @@ export async function listPublishedTestimonials(): Promise<PublicTestimonial[]> 
       text: feedback.text,
     })
     .from(feedback)
-    .where(and(eq(feedback.published, true), isNotNull(feedback.publishDisplayName)))
+    .where(
+      and(
+        eq(feedback.published, true),
+        eq(feedback.consentToPublish, true),
+        isNotNull(feedback.publishDisplayName),
+      ),
+    )
     .orderBy(desc(feedback.createdAt));
 
   return rows.map((r) => ({
