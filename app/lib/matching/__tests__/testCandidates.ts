@@ -16,12 +16,16 @@ export function testCandidate(overrides: {
   partnerGenderIsHardRequirement?: boolean;
   experienceLevel?: ExperienceLevelValue;
   signupId?: number;
+  /** Defaults to signupId. Set it explicitly when a test needs the two to
+   * differ -- which is the realistic case, since a person gets a fresh
+   * signup row every cohort. */
+  personId?: number;
 }): Candidate {
   const offset = overrides.utcOffsetMinutes ?? 0;
   const signupId = overrides.signupId ?? nextSignupId++;
   return {
     signupId,
-    personId: signupId,
+    personId: overrides.personId ?? signupId,
     firstName: overrides.firstName,
     timezone: "UTC",
     sessionsPerWeek: overrides.sessionsPerWeek ?? 3,

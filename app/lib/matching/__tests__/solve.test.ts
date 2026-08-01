@@ -105,6 +105,41 @@ describe("generateMatches", () => {
     expect(abTogetherWithHistory).toBe(false);
   });
 
+  // The history set is keyed by personId, not signupId -- a person gets a
+  // fresh signup row every cohort, so a signupId-keyed lookup silently
+  // never detects a repeat. Every other test here happens to use candidates
+  // where the two ids are equal, which would hide exactly that mistake.
+  it("keys repeat-pairing history by personId, not signupId", () => {
+    const shared = { localSlots: GENEROUS_SLOTS, sessionLength: "15" as const, sessionsPerWeek: 3 };
+    const a = testCandidate({ ...shared, firstName: "Ada", signupId: 201, personId: 11 });
+    const b = testCandidate({ ...shared, firstName: "Bo", signupId: 202, personId: 12 });
+    const c = testCandidate({
+      ...shared,
+      firstName: "Cy",
+      sessionLength: "10",
+      sessionsPerWeek: 2,
+      signupId: 203,
+      personId: 13,
+    });
+    const d = testCandidate({
+      ...shared,
+      firstName: "Dee",
+      sessionLength: "10",
+      sessionsPerWeek: 2,
+      signupId: 204,
+      personId: 14,
+    });
+
+    const together = (result: ReturnType<typeof generateMatches>) =>
+      result.groups.some((g) => g.signupIds.includes(201) && g.signupIds.includes(202));
+
+    expect(together(generateMatches([a, b, c, d], NO_HISTORY))).toBe(true);
+    // Keyed by the *signup* ids, history must have no effect at all.
+    expect(together(generateMatches([a, b, c, d], new Set([pairKey(201, 202)])))).toBe(true);
+    // Keyed by the *person* ids, it must break the repeat pairing.
+    expect(together(generateMatches([a, b, c, d], new Set([pairKey(11, 12)])))).toBe(false);
+  });
+
   it("returns everyone as unmatched when there are fewer than 2 candidates", () => {
     const a = testCandidate({ firstName: "Solo", localSlots: GENEROUS_SLOTS });
     expect(generateMatches([a], NO_HISTORY)).toEqual({
