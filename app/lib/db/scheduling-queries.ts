@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "./index";
 import { cohorts, matchSessions, matches } from "./schema";
 import { toRawSignupInput } from "./matching-queries";
@@ -202,14 +202,4 @@ export async function sendScheduleForCohort(cohortId: number): Promise<SendSched
   }
 
   return results;
-}
-
-/** Approved matches for a cohort that still have no sessions computed at
- * all -- used to sanity-check "is there anything to schedule". */
-export async function countUnscheduledApprovedMatches(cohortId: number): Promise<number> {
-  const rows = await db
-    .select({ id: matches.id })
-    .from(matches)
-    .where(and(eq(matches.cohortId, cohortId), eq(matches.status, "approved"), isNull(matches.scheduledAt)));
-  return rows.length;
 }

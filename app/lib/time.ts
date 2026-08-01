@@ -3,16 +3,6 @@
  * bugs: a fixed UTC offset captured at signup time silently drifts by an
  * hour whenever a cohort's 4 weeks cross a DST transition. */
 
-export const DAY_LABELS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-] as const;
-
 export const DAY_LABELS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 export function minutesToLabel(minutes: number): string {
