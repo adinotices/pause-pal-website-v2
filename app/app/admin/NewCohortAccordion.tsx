@@ -1,11 +1,39 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { createCohortAction } from "./actions";
+
+function spansDST(startDate: string, endDate: string): boolean {
+  if (!startDate || !endDate) return false;
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  const dstTransitions = [
+    { year: 2024, springForward: new Date(2024, 2, 10), fallBack: new Date(2024, 10, 3) },
+    { year: 2025, springForward: new Date(2025, 2, 9), fallBack: new Date(2025, 10, 2) },
+    { year: 2026, springForward: new Date(2026, 2, 8), fallBack: new Date(2026, 10, 1) },
+  ];
+
+  for (const transition of dstTransitions) {
+    if (
+      (start <= transition.springForward && end >= transition.springForward) ||
+      (start <= transition.fallBack && end >= transition.fallBack)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 export function NewCohortAccordion() {
   const [isOpen, setIsOpen] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const hasDSTWarning = useMemo(() => spansDST(startDate, endDate), [startDate, endDate]);
 
   return (
     <div className="mt-5">
@@ -46,6 +74,8 @@ export function NewCohortAccordion() {
               name="startsOn"
               type="date"
               required
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
               className="mt-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </div>
@@ -58,6 +88,8 @@ export function NewCohortAccordion() {
               name="endsOn"
               type="date"
               required
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
               className="mt-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </div>
@@ -68,6 +100,11 @@ export function NewCohortAccordion() {
             Open cohort
           </button>
         </form>
+        {hasDSTWarning && (
+          <p className="mt-3 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800">
+            <strong>⚠️ DST transition:</strong> This cohort dates span a daylight saving time transition. Verify session times after participants confirm their timezones.
+          </p>
+        )}
         <p className="mt-2 text-xs text-neutral-500">
           Opening a new cohort automatically closes signups for whichever cohort is currently
           open.
