@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { listCohorts, listSignupsForCohort } from "@/lib/db/queries";
 import { formatAvailability, SESSION_LENGTH_LABELS, EXPERIENCE_LABELS } from "@/lib/format";
-import { createCohortAction, closeCohortAction, logoutAction } from "./actions";
+import { closeCohortAction, logoutAction } from "./actions";
+import { NewCohortAccordion } from "./NewCohortAccordion";
 
 export const dynamic = "force-dynamic";
 
@@ -69,59 +70,7 @@ export default async function AdminPage({
           </form>
         )}
 
-        <details className="mt-5">
-          <summary className="cursor-pointer text-sm font-medium text-neutral-700">
-            Open a new cohort
-          </summary>
-          <form action={createCohortAction} className="mt-3 flex flex-wrap items-end gap-3">
-            <div>
-              <label className="block text-xs font-medium text-neutral-600" htmlFor="number">
-                Cohort number
-              </label>
-              <input
-                id="number"
-                name="number"
-                type="number"
-                required
-                className="mt-1 w-28 rounded-lg border border-neutral-300 px-2 py-1.5 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-neutral-600" htmlFor="startsOn">
-                Starts on
-              </label>
-              <input
-                id="startsOn"
-                name="startsOn"
-                type="date"
-                required
-                className="mt-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-neutral-600" htmlFor="endsOn">
-                Ends on
-              </label>
-              <input
-                id="endsOn"
-                name="endsOn"
-                type="date"
-                required
-                className="mt-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-sm"
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-full bg-emerald-600 px-4 py-1.5 text-sm text-white hover:bg-emerald-700"
-            >
-              Open cohort
-            </button>
-          </form>
-          <p className="mt-2 text-xs text-neutral-500">
-            Opening a new cohort automatically closes signups for whichever cohort is currently
-            open.
-          </p>
-        </details>
+        <NewCohortAccordion />
       </section>
 
       {selected && (
