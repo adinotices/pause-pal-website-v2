@@ -1,83 +1,72 @@
-# 🚀 Quick Start: Deploy PausePal to Production
+# 🚀 Quick Start: Deploy PausePal to Vercel
 
-**TL;DR** — Set up automated deployment in 10 minutes:
+The app already ships with `app/vercel.json` (configures the daily reminders
+cron at 13:00 UTC). This guide connects the repo to Vercel so every push to
+`main` deploys automatically — no CI workflow file needed, Vercel watches
+the repo directly via its GitHub integration.
 
-## 1. Create Fly.io App (5 minutes)
+## 1. Import the project (5 minutes)
+
+1. Go to https://vercel.com/new
+2. Click **Import Git Repository** and select `adinotices/pause-pal-website-v2`
+3. When asked for the **Root Directory**, set it to `app` — the Next.js app
+   lives in `app/`, not the repo root (the repo root is the separate static
+   marketing site deployed to GitHub Pages)
+4. Framework Preset should auto-detect as **Next.js**
+5. Leave build/output settings as default (`npm run build`, `.next`)
+
+## 2. Add environment variables (5 minutes)
+
+In the Vercel project → **Settings → Environment Variables**, add (for
+Production, and Preview if you want PR previews to work):
+
+- `DATABASE_URL` — PostgreSQL connection string
+- `RESEND_API_KEY` — for sending email
+- `NEXTAUTH_SECRET` — random secret for magic-link token signing (`openssl rand -base64 32`)
+- `NEXTAUTH_URL` — your production URL, e.g. `https://app.pausepal.co`
+
+Optional, only if those integrations are enabled:
+- `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`
+- `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`
+
+## 3. Deploy
+
+Click **Deploy**. Vercel builds and deploys immediately, and from now on:
+
+- Every push to `main` → automatic production deployment
+- Every PR → automatic preview deployment with its own URL
+- The cron in `app/vercel.json` (`/api/cron/reminders` daily at 13:00 UTC)
+  activates automatically once the project is on a plan that supports
+  Vercel Cron (Hobby plan allows 1 cron job, which is exactly what this
+  needs)
+
+## 4. Run the database migration
+
+Vercel doesn't run migrations for you. From your machine, pointed at the
+production database:
 
 ```bash
-# Install CLI
-curl https://fly.io/install.sh | sh
-
-# Login & create app
-fly auth login
 cd app
-fly launch
-# Choose: pausepal-app, sjc region, YES for Postgres, development size
+DATABASE_URL=<production-connection-string> npm run drizzle:migrate
 ```
 
-## 2. Add GitHub Secret (2 minutes)
+Do this once after the first deploy, and again after any future PR that
+adds a new migration file under `app/drizzle/`.
 
-```bash
-# Create deploy token
-fly tokens create deploy
-# Copy the output
+## 5. Point the domain
 
-# Go to GitHub → Settings → Secrets → New secret
-# Name: FLY_API_TOKEN
-# Value: <paste the token>
-```
+If `app.pausepal.co` should serve this app:
+Vercel project → **Settings → Domains** → add `app.pausepal.co` → follow
+the DNS instructions Vercel shows (usually a CNAME record).
 
-## 3. Add Environment Variables (2 minutes)
+## 6. Verify
 
-```bash
-# Set database URL (from fly launch output)
-fly secrets set DATABASE_URL=postgres://...
+- Visit the deployed URL → `/admin` should load
+- Submit a test signup → confirm it lands in the database
+- Check **Vercel → Project → Cron Jobs** shows the reminders job registered
 
-# Set required secrets
-fly secrets set \
-  RESEND_API_KEY=re_xxxxx \
-  NEXTAUTH_SECRET=$(openssl rand -base64 32) \
-  NEXTAUTH_URL=https://pausepal-app.fly.dev
+## Ongoing workflow
 
-# Optional: Add Zoom/Google Calendar if configured
-fly secrets set ZOOM_CLIENT_ID=xxx ZOOM_CLIENT_SECRET=xxx
-```
-
-## 4. Deploy (1 minute)
-
-```bash
-git add .github/workflows/deploy-app.yml app/fly.toml
-git commit -m "Enable Fly.io deployment"
-git push origin main
-# → Automatic deployment starts!
-```
-
-## 5. Verify (1 minute)
-
-```bash
-# Check status
-fly status
-
-# View logs
-fly logs
-
-# Test the app
-open https://pausepal-app.fly.dev/admin
-```
-
-## ✅ Done!
-
-Your app now deploys automatically on every push to main:
-- Code pushed → GitHub Actions builds & deploys → Database migrations run → App live
-- Reminders run automatically every day at 6 AM UTC
-- Database backed up automatically
-
-## Need Help?
-
-See **FLY_SETUP.md** for detailed setup, troubleshooting, and customization.
-
-## Key Files
-
-- `.github/workflows/deploy-app.yml` — Automated deployment workflow
-- `app/fly.toml` — Fly.io configuration (resource specs, cron jobs)
-- `FLY_SETUP.md` — Complete setup guide with troubleshooting
+Once connected, there's nothing else to run — merge to `main`, Vercel
+deploys. The only manual step is applying new database migrations after
+a deploy that includes one (step 4).
