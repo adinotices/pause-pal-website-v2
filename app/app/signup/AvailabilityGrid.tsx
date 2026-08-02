@@ -1,14 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DAY_LABELS_SHORT, minutesToLabel } from "@/lib/time";
+import { DAY_LABELS_SHORT } from "@/lib/time";
 import type { AvailabilityInput } from "@/lib/db/queries";
 
 const SLOT_MINUTES = 30;
 const SLOTS_PER_DAY = (24 * 60) / SLOT_MINUTES; // 48
+const DAY_LABELS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
 function slotKey(day: number, slot: number) {
   return `${day}-${slot}`;
+}
+
+function getTimeLabel(slot: number): string {
+  const hours = Math.floor((slot * SLOT_MINUTES) / 60);
+  const mins = (slot * SLOT_MINUTES) % 60;
+  const ampm = hours < 12 ? "am" : "pm";
+  const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  return `${displayHour}:${mins.toString().padStart(2, "0")}${ampm}`;
 }
 
 /** Merges contiguous selected slots (same day, adjacent slot index) into
@@ -42,6 +51,7 @@ export default function AvailabilityGrid({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const dragModeRef = useRef<"select" | "deselect" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const cellRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   useEffect(() => {
     // Default scroll position to roughly 6am rather than midnight.
@@ -62,6 +72,14 @@ export default function AvailabilityGrid({
       });
     },
     [],
+  );
+
+  const toggleCell = useCallback(
+    (day: number, slot: number) => {
+      const mode = selected.has(slotKey(day, slot)) ? "deselect" : "select";
+      applyToCell(day, slot, mode);
+    },
+    [selected, applyToCell],
   );
 
   useEffect(() => {
@@ -103,13 +121,61 @@ export default function AvailabilityGrid({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, day: number, slot: number) => {
+    let newDay = day;
+    let newSlot = slot;
+    let shouldMove = false;
+
+    switch (e.key) {
+      case "ArrowUp":
+        if (slot > 0) {
+          newSlot = slot - 1;
+          shouldMove = true;
+        }
+        break;
+      case "ArrowDown":
+        if (slot < SLOTS_PER_DAY - 1) {
+          newSlot = slot + 1;
+          shouldMove = true;
+        }
+        break;
+      case "ArrowLeft":
+        if (day > 0) {
+          newDay = day - 1;
+          shouldMove = true;
+        }
+        break;
+      case "ArrowRight":
+        if (day < 6) {
+          newDay = day + 1;
+          shouldMove = true;
+        }
+        break;
+      case " ":
+      case "Enter":
+        e.preventDefault();
+        toggleCell(day, slot);
+        return;
+      default:
+        return;
+    }
+
+    if (shouldMove) {
+      e.preventDefault();
+      const key = slotKey(newDay, newSlot);
+      setTimeout(() => {
+        cellRefs.current.get(key)?.focus();
+      }, 0);
+    }
+  };
+
   const clearAll = () => setSelected(new Set());
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
         <p className="text-sm text-neutral-500">
-          Click or drag to select the times you&apos;re usually free to meditate. All times are in{" "}
+          Click, drag, or use arrow keys and space to select the times you&apos;re usually free to meditate. All times are in{" "}
           <span className="font-medium">your local timezone</span> as selected above.
         </p>
         <button
@@ -122,19 +188,26 @@ export default function AvailabilityGrid({
       </div>
       <div
         ref={scrollRef}
-        className="max-h-96 select-none overflow-y-auto rounded-lg border border-neutral-200"
+        className="max-h-96 overflow-y-auto rounded-lg border border-neutral-200"
         onTouchMove={handleTouchMove}
       >
         <table className="w-full border-collapse text-xs">
+          <caption className="sr-only">
+            Availability grid. Select your available times for meditation sessions. Days of week across columns, times across rows. Use arrow keys to navigate, space or enter to toggle selection.
+          </caption>
           <thead className="sticky top-0 z-10 bg-white">
             <tr>
-              <th className="w-14 border-b border-neutral-200 bg-white p-1"></th>
-              {DAY_LABELS_SHORT.map((label) => (
+              <th className="w-14 border-b border-neutral-200 bg-white p-1" scope="col">
+                <span className="sr-only">Time</span>
+              </th>
+              {DAY_LABELS_FULL.map((label, idx) => (
                 <th
                   key={label}
                   className="border-b border-l border-neutral-200 bg-white p-1 font-medium text-neutral-600"
+                  scope="col"
                 >
-                  {label}
+                  <span className="hidden sm:inline">{DAY_LABELS_SHORT[idx]}</span>
+                  <span className="inline sm:hidden sr-only">{label}</span>
                 </th>
               ))}
             </tr>
@@ -142,23 +215,39 @@ export default function AvailabilityGrid({
           <tbody>
             {Array.from({ length: SLOTS_PER_DAY }, (_, slot) => slot).map((slot) => (
               <tr key={slot}>
-                <td className="border-b border-neutral-100 p-1 text-right text-neutral-400">
-                  {slot % 2 === 0 ? minutesToLabel(slot * SLOT_MINUTES) : ""}
-                </td>
+                <th
+                  className="border-b border-neutral-100 p-1 text-right text-neutral-400 font-normal"
+                  scope="row"
+                  id={`time-${slot}`}
+                >
+                  {slot % 2 === 0 ? getTimeLabel(slot) : ""}
+                </th>
                 {Array.from({ length: 7 }, (_, day) => day).map((day) => {
                   const isSelected = selected.has(slotKey(day, slot));
+                  const key = slotKey(day, slot);
                   return (
                     <td
                       key={day}
-                      data-day={day}
-                      data-slot={slot}
-                      onMouseDown={() => handleCellDown(day, slot)}
-                      onMouseEnter={() => handleCellEnter(day, slot)}
-                      onTouchStart={() => handleCellDown(day, slot)}
-                      className={`h-4 cursor-pointer border-b border-l border-neutral-100 ${
-                        isSelected ? "bg-emerald-500" : "hover:bg-emerald-50"
-                      }`}
-                    />
+                      className="border-b border-l border-neutral-100 p-0"
+                    >
+                      <button
+                        ref={(el) => {
+                          if (el) cellRefs.current.set(key, el);
+                          else cellRefs.current.delete(key);
+                        }}
+                        data-day={day}
+                        data-slot={slot}
+                        onMouseDown={() => handleCellDown(day, slot)}
+                        onMouseEnter={() => handleCellEnter(day, slot)}
+                        onTouchStart={() => handleCellDown(day, slot)}
+                        onKeyDown={(e) => handleKeyDown(e, day, slot)}
+                        className={`w-full h-6 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-inset transition-colors ${
+                          isSelected ? "bg-emerald-500" : "bg-white hover:bg-emerald-50"
+                        }`}
+                        aria-label={`${DAY_LABELS_FULL[day]} at ${getTimeLabel(slot)}${isSelected ? ", selected" : ""}`}
+                        aria-pressed={isSelected}
+                      />
+                    </td>
                   );
                 })}
               </tr>
