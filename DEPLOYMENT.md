@@ -61,10 +61,17 @@ This applies the new indexes and constraints from 0004_thankful_madame_masque.sq
 ### 2. Environment Setup
 Ensure production `.env` includes:
 - `DATABASE_URL` - PostgreSQL connection string
+- `ADMIN_PASSWORD` - Shared password for `/admin` login
+- `ADMIN_SESSION_SECRET` - Signs admin session cookies (`openssl rand -hex 32`)
+- `PARTICIPANT_SESSION_SECRET` - Signs participant magic-link session cookies, distinct from the admin one (`openssl rand -hex 32`)
+- `APP_URL` - Production URL, used to build absolute links in emails
 - `RESEND_API_KEY` - For email delivery
-- `ZOOM_OAUTH_*` - Zoom integration (if enabled)
-- `GOOGLE_CALENDAR_*` - Google Calendar integration (if enabled)
-- `NEXTAUTH_SECRET` - For magic-link token signing
+- `RESEND_FROM_EMAIL` - Sender address for outgoing email
+- `CRON_SECRET` - Verifies `/api/cron/reminders` requests come from Vercel Cron
+- `ZOOM_*` - Zoom integration (if enabled)
+- `GOOGLE_SERVICE_ACCOUNT_*` / `GOOGLE_CALENDAR_ID` - Google Calendar integration (if enabled)
+
+See `app/.env.example` for the full list with setup notes.
 
 ### 3. Deploy
 Standard Next.js deployment (Vercel, self-hosted, etc.):

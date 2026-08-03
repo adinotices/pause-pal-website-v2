@@ -21,13 +21,19 @@ In the Vercel project → **Settings → Environment Variables**, add (for
 Production, and Preview if you want PR previews to work):
 
 - `DATABASE_URL` — PostgreSQL connection string
+- `ADMIN_PASSWORD` — shared password for `/admin` login (pick your own)
+- `ADMIN_SESSION_SECRET` — random secret for admin session cookies (`openssl rand -hex 32`)
+- `PARTICIPANT_SESSION_SECRET` — random secret for participant (magic-link) session cookies, must differ from the one above (`openssl rand -hex 32`)
+- `APP_URL` — your production URL, e.g. `https://app.pausepal.co` (used to build absolute links in emails)
 - `RESEND_API_KEY` — for sending email
-- `NEXTAUTH_SECRET` — random secret for magic-link token signing (`openssl rand -base64 32`)
-- `NEXTAUTH_URL` — your production URL, e.g. `https://app.pausepal.co`
+- `RESEND_FROM_EMAIL` — e.g. `PausePal <hello@pausepal.co>`
+- `CRON_SECRET` — random secret (`openssl rand -hex 32`) that verifies `/api/cron/reminders` requests actually come from Vercel Cron
 
 Optional, only if those integrations are enabled:
-- `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`
-- `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`
+- `ZOOM_ACCOUNT_ID`, `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`, `ZOOM_HOST_EMAIL`
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, `GOOGLE_CALENDAR_ID`
+
+See `app/.env.example` for the full list with comments on each.
 
 ## 3. Deploy
 
