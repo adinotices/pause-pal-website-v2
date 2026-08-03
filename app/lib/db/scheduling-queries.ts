@@ -6,7 +6,7 @@ import { computeMatchSchedule, type ComputedSession } from "@/lib/scheduling/com
 import { computeWeekCount } from "@/lib/scheduling/instants";
 import { isFullyProcessed } from "@/lib/scheduling/status";
 import { isGoogleCalendarConfigured, isZoomConfigured } from "@/lib/integrations/config";
-import { createRecurringMeeting } from "@/lib/integrations/zoom";
+import { cancelMeeting, createRecurringMeeting } from "@/lib/integrations/zoom";
 import { createRecurringEvent } from "@/lib/integrations/google-calendar";
 
 async function getApprovedMatchesWithMembers(cohortId: number) {
@@ -147,13 +147,28 @@ export async function sendScheduleForCohort(cohortId: number): Promise<SendSched
       let zoomCreated = false;
       if (!zoomMeetingId && isZoomConfigured()) {
         const meeting = await createRecurringMeeting(topic);
+        try {
+          await db
+            .update(matches)
+            .set({ zoomMeetingId: meeting.id, zoomJoinUrl: meeting.joinUrl })
+            .where(eq(matches.id, match.id));
+        } catch (persistErr) {
+          // The meeting now exists on Zoom's side but we couldn't record
+          // it, so the next run would see zoomMeetingId still null and
+          // create a *second* meeting. Cancel this one so a retry starts
+          // clean instead of accumulating orphaned meetings, then
+          // propagate the original DB error.
+          await cancelMeeting(meeting.id).catch((cancelErr) => {
+            console.error(
+              `Failed to cancel orphaned Zoom meeting ${meeting.id} for match ${match.id} after DB write failure`,
+              cancelErr,
+            );
+          });
+          throw persistErr;
+        }
         zoomMeetingId = meeting.id;
         zoomJoinUrl = meeting.joinUrl;
         zoomCreated = true;
-        await db
-          .update(matches)
-          .set({ zoomMeetingId, zoomJoinUrl })
-          .where(eq(matches.id, match.id));
       }
 
       let sessionRows = match.sessions;

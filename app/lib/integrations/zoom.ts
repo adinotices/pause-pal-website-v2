@@ -63,3 +63,21 @@ export async function createRecurringMeeting(topic: string): Promise<ZoomMeeting
   const data = (await res.json()) as { id: number | string; join_url: string };
   return { id: String(data.id), joinUrl: data.join_url };
 }
+
+/** Cancels a meeting created by `createRecurringMeeting`. Used as a
+ * compensating action when the meeting was created successfully but the
+ * DB write that was meant to record it failed -- without this, the next
+ * scheduling run would see no `zoomMeetingId` stored and create a second,
+ * orphaned meeting for the same match. Best-effort: callers should log
+ * (not throw) on failure, since a leftover unused meeting is a much
+ * smaller problem than losing the original DB-write error. */
+export async function cancelMeeting(meetingId: string): Promise<void> {
+  const token = await getAccessToken();
+  const res = await fetch(`https://api.zoom.us/v2/meetings/${encodeURIComponent(meetingId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Zoom meeting cancellation failed: ${res.status} ${await res.text()}`);
+  }
+}
