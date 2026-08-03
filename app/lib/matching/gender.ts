@@ -37,8 +37,14 @@ const CANONICAL_BUCKETS: Record<string, string[]> = {
   ],
 };
 
+// Hyphens are stripped (not just whitespace-collapsed) so "non-binary" and
+// "nonbinary" -- both listed as synonyms below -- compare equal. Without
+// this, "non-binary" (a stated preference) and free text like "nonbinary
+// they/them" (an identity) never matched: the exact-bucket check requires
+// the whole string to equal a synonym, and the substring fallback is
+// literal, so the hyphen alone was enough to miss an otherwise-clear match.
 function normalize(text: string): string {
-  return text.trim().toLowerCase().replace(/\s+/g, " ");
+  return text.trim().toLowerCase().replace(/-/g, "").replace(/\s+/g, " ");
 }
 
 /**
@@ -49,8 +55,14 @@ function normalize(text: string): string {
  * way this function can be wrong, since it silently overrides a stated
  * hard requirement.
  */
+// Deliberately excludes bare "non" -- it's essentially never used alone as
+// a negation word in English (unlike "not"/"no"/"none"), and including it
+// meant "non-binary" and "non binary" -- both listed as identity synonyms
+// just above -- were misread as negations whenever the other side's free
+// text didn't happen to match a bucket synonym exactly, silently blocking
+// valid matches for non-binary participants with a hard requirement.
 const NEGATION_PATTERN =
-  /\b(not|no|non|none|never|anyone but|anything but|any but|except|other than|besides|excluding|rather not|prefer not|avoid)\b/;
+  /\b(not|no|none|never|anyone but|anything but|any but|except|other than|besides|excluding|rather not|prefer not|avoid)\b/;
 
 function isNegated(text: string): boolean {
   return NEGATION_PATTERN.test(text);

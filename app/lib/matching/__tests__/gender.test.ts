@@ -69,4 +69,16 @@ describe("checkGenderPreference", () => {
     expect(checkGenderPreference("no preference", "man")).toBe("satisfied");
     expect(checkGenderPreference("none", "woman")).toBe("satisfied");
   });
+
+  // Regression: the negation regex used to include bare "non", which
+  // matched the "non" inside "non-binary" and caused a stated non-binary
+  // preference to be misread as a negation whenever the candidate's
+  // free-text identity didn't exactly equal a bucket synonym. Separately,
+  // normalize() didn't strip hyphens, so "non-binary" and "nonbinary"
+  // never compared equal even once negation was fixed.
+  it("does not misread 'non-binary' preferences as negations, hyphen or not", () => {
+    expect(checkGenderPreference("non-binary", "nonbinary they/them")).toBe("satisfied");
+    expect(checkGenderPreference("nonbinary", "non-binary they/them")).toBe("satisfied");
+    expect(checkGenderPreference("non binary", "enby")).toBe("satisfied");
+  });
 });
