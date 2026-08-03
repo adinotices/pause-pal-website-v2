@@ -9,6 +9,26 @@ import type { AvailabilityInput } from "@/lib/db/queries";
 
 const STEPS = ["You", "Availability", "Preferences", "Commitment"] as const;
 
+/** Which step each server-validated field lives on -- used to jump the
+ * user to the earliest step with an error after a failed submission.
+ * Without this, a field error on e.g. step 0 renders inside a `hidden`
+ * section while the user is still looking at step 3, so all they see is
+ * the generic "fix the highlighted fields" banner with nothing visibly
+ * highlighted. */
+const STEP_BY_FIELD: Record<string, number> = {
+  firstName: 0,
+  email: 0,
+  timezone: 0,
+  availability: 1,
+  sessionsPerWeek: 2,
+  sessionLength: 2,
+  experienceLevel: 2,
+  ownGenderIdentity: 2,
+  partnerGenderPreference: 2,
+  notes: 2,
+  agreedToCommitment: 3,
+};
+
 const initialState: SignupFormState = { status: "idle" };
 
 function SubmitButton() {
@@ -39,6 +59,14 @@ export default function SignupForm({ cohortNumber }: { cohortNumber: number }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTimezone(guessTimezone());
   }, []);
+
+  useEffect(() => {
+    if (!state.fieldErrors) return;
+    const erroredSteps = Object.keys(state.fieldErrors).map((field) => STEP_BY_FIELD[field] ?? 0);
+    if (erroredSteps.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStep(Math.min(...erroredSteps));
+  }, [state.fieldErrors]);
   const [availability, setAvailability] = useState<AvailabilityInput[]>([]);
   const [sessionsPerWeek, setSessionsPerWeek] = useState(3);
   const [sessionLength, setSessionLength] = useState("15");
@@ -117,6 +145,7 @@ export default function SignupForm({ cohortNumber }: { cohortNumber: number }) {
             onChange={(e) => setFirstName(e.target.value)}
             className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
             required
+            maxLength={100}
           />
           {state.fieldErrors?.firstName && (
             <p className="mt-1 text-sm text-red-600">{state.fieldErrors.firstName}</p>
@@ -232,6 +261,7 @@ export default function SignupForm({ cohortNumber }: { cohortNumber: number }) {
             value={ownGenderIdentity}
             onChange={(e) => setOwnGenderIdentity(e.target.value)}
             className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+            maxLength={200}
           />
         </div>
         <div>
@@ -245,6 +275,7 @@ export default function SignupForm({ cohortNumber }: { cohortNumber: number }) {
             onChange={(e) => setPartnerGenderPreference(e.target.value)}
             placeholder="e.g. no preference, woman, man, non-binary"
             className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+            maxLength={200}
           />
           <label className="mt-2 flex items-center gap-2 text-sm">
             <input
@@ -267,6 +298,7 @@ export default function SignupForm({ cohortNumber }: { cohortNumber: number }) {
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
             className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2"
+            maxLength={2000}
           />
         </div>
       </section>
