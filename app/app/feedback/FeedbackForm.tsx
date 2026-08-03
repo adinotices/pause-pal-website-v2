@@ -46,17 +46,24 @@ export default function FeedbackForm({
       )}
 
       <div>
-        <span className="block text-sm font-medium">Rating</span>
-        <div className="mt-1 flex gap-1">
+        <span id="rating-label" className="block text-sm font-medium">
+          Rating
+        </span>
+        {/* Selection is conveyed via aria-pressed and a filled-vs-outline
+         * glyph, not color alone -- color contrast (amber vs neutral) is
+         * the same signal sighted users see, but screen readers and users
+         * who can't distinguish the two colors need something else. */}
+        <div className="mt-1 flex gap-1" role="group" aria-labelledby="rating-label">
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
               onClick={() => setRating(n)}
               aria-label={`${n} star${n === 1 ? "" : "s"}`}
+              aria-pressed={n === rating}
               className={`text-2xl ${n <= rating ? "text-amber-500" : "text-neutral-300"}`}
             >
-              ★
+              {n <= rating ? "★" : "☆"}
             </button>
           ))}
         </div>
