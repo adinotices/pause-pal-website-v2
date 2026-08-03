@@ -67,6 +67,7 @@ the DNS instructions Vercel shows (usually a CNAME record).
 
 ## 6. Verify
 
+- Visit `<your-url>/api/health` → should return `{"status":"ok","database":"connected"}`
 - Visit the deployed URL → `/admin` should load
 - Submit a test signup → confirm it lands in the database
 - Check **Vercel → Project → Cron Jobs** shows the reminders job registered
