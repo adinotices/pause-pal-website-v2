@@ -25,6 +25,9 @@ export async function GET(request: NextRequest) {
   }
 
   const cohortNumber = Number(request.nextUrl.searchParams.get("cohort"));
+  if (!Number.isInteger(cohortNumber)) {
+    return NextResponse.json({ error: "Cohort not found" }, { status: 404 });
+  }
   const cohort = await getCohortByNumber(cohortNumber);
   if (!cohort) {
     return NextResponse.json({ error: "Cohort not found" }, { status: 404 });

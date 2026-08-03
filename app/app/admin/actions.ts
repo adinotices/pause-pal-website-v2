@@ -65,14 +65,25 @@ const createCohortSchema = z.object({
 });
 
 /** Creates a new cohort in the `open` state and closes any cohort that was
- * previously open. Phase 1 assumes at most one open cohort at a time. */
+ * previously open. Phase 1 assumes at most one open cohort at a time.
+ *
+ * This form isn't wired through useActionState (it's a plain <form
+ * action={...}>), so there's no field-level error channel back to the
+ * client the way loginAction/submitSignupAction have -- a bypassed
+ * `required` attribute or other tampering falls back to a `?error=`
+ * redirect the admin page surfaces as a banner, rather than `.parse()`
+ * throwing an uncaught ZodError. */
 export async function createCohortAction(formData: FormData) {
   await requireAdmin();
-  const parsed = createCohortSchema.parse({
+  const parsed = createCohortSchema.safeParse({
     number: formData.get("number"),
     startsOn: formData.get("startsOn"),
     endsOn: formData.get("endsOn"),
   });
+
+  if (!parsed.success) {
+    redirect("/admin?error=invalid-cohort-form");
+  }
 
   await db.transaction(async (tx) => {
     await tx
@@ -81,10 +92,10 @@ export async function createCohortAction(formData: FormData) {
       .where(eq(cohorts.state, "open"));
 
     await tx.insert(cohorts).values({
-      number: parsed.number,
+      number: parsed.data.number,
       state: "open",
-      startsOn: parsed.startsOn,
-      endsOn: parsed.endsOn,
+      startsOn: parsed.data.startsOn,
+      endsOn: parsed.data.endsOn,
       signupOpensAt: new Date(),
     });
   });
@@ -95,6 +106,9 @@ export async function createCohortAction(formData: FormData) {
 export async function closeCohortAction(formData: FormData) {
   await requireAdmin();
   const cohortId = Number(formData.get("cohortId"));
+  if (!Number.isInteger(cohortId)) {
+    redirect("/admin?error=invalid-cohort-form");
+  }
   await db.update(cohorts).set({ state: "closed" }).where(eq(cohorts.id, cohortId));
   redirect("/admin");
 }

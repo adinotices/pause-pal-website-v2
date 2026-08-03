@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cohort?: string }>;
+  searchParams: Promise<{ cohort?: string; error?: string }>;
 }) {
-  const { cohort: cohortParam } = await searchParams;
+  const { cohort: cohortParam, error } = await searchParams;
   const allCohorts = await listCohorts();
   const selected =
     allCohorts.find((c) => c.number === Number(cohortParam)) ??
@@ -36,6 +36,12 @@ export default async function AdminPage({
           </form>
         </div>
       </div>
+
+      {error === "invalid-cohort-form" && (
+        <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          Couldn&apos;t save that -- please check the cohort number and dates and try again.
+        </p>
+      )}
 
       <section className="mt-8 rounded-xl border border-neutral-200 p-5">
         <h2 className="font-medium">Cohorts</h2>
