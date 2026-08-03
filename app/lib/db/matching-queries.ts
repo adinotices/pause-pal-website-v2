@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "./index";
-import { cohorts, matchMembers, matches, signups } from "./schema";
+import { cohorts, matchMembers, matches, signups, people } from "./schema";
 import { buildCandidate, type RawSignupInput } from "@/lib/matching/candidate";
 import { generateMatches } from "@/lib/matching/solve";
 import { pairKey } from "@/lib/matching/compatibility";
@@ -231,7 +231,9 @@ export async function listMatchesForCohort(cohortId: number): Promise<MatchWithM
 
 /** Submitted signups for a cohort that aren't currently part of any match
  * (proposed or approved) -- these need a human to look at. */
-export async function listUnmatchedSignupsForCohort(cohortId: number) {
+export async function listUnmatchedSignupsForCohort(
+  cohortId: number,
+): Promise<(typeof signups.$inferSelect & { person: typeof people.$inferSelect })[]> {
   const matched = await db
     .select({ signupId: matchMembers.signupId })
     .from(matchMembers)
@@ -244,5 +246,7 @@ export async function listUnmatchedSignupsForCohort(cohortId: number) {
     with: { person: true },
   });
 
-  return rows.filter((r) => !matchedIds.has(r.id));
+  return rows.filter((r) => !matchedIds.has(r.id)) as (typeof signups.$inferSelect & {
+    person: typeof people.$inferSelect;
+  })[];
 }
