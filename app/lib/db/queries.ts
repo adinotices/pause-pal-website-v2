@@ -29,6 +29,12 @@ export type SignupInput = {
   notes: string;
 };
 
+export type SignupRow = typeof signups.$inferSelect & {
+  person: typeof people.$inferSelect;
+  availabilitySlots: (typeof availabilitySlots.$inferSelect)[];
+  preferences: (typeof preferences.$inferSelect) | null;
+};
+
 /** The single cohort currently accepting signups, if any. Phase 1 assumes
  * at most one open cohort at a time. */
 export async function getOpenCohort() {
@@ -138,7 +144,7 @@ export async function submitSignup(input: SignupInput) {
   });
 }
 
-export async function listSignupsForCohort(cohortId: number) {
+export async function listSignupsForCohort(cohortId: number): Promise<SignupRow[]> {
   const rows = await db.query.signups.findMany({
     where: eq(signups.cohortId, cohortId),
     orderBy: desc(signups.submittedAt),
@@ -148,7 +154,7 @@ export async function listSignupsForCohort(cohortId: number) {
       preferences: true,
     },
   });
-  return rows;
+  return rows as SignupRow[];
 }
 
 export async function listCohorts() {
