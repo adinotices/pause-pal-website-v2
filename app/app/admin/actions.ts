@@ -11,6 +11,26 @@ import { cohorts } from "@/lib/db/schema";
 
 export type LoginState = { status: "idle" | "error"; message?: string };
 
+/** Only ever redirect somewhere on this same site after login -- `next`
+ * comes from a query param an attacker fully controls (e.g. a phishing
+ * link like `/admin/login?next=https://evil.example`), so anything that
+ * isn't an internal path gets ignored in favor of the safe default. */
+function safeNextPath(next: FormDataEntryValue | null): string {
+  const value = String(next ?? "");
+  // Reject protocol-relative ("//evil.example"), backslash tricks some
+  // browsers normalize to protocol-relative ("/\evil.example"), and any
+  // embedded scheme -- only a genuine same-site path is allowed through.
+  if (
+    value.startsWith("/") &&
+    !value.startsWith("//") &&
+    !value.startsWith("/\\") &&
+    !value.includes("://")
+  ) {
+    return value;
+  }
+  return "/admin";
+}
+
 export async function loginAction(
   _prevState: LoginState,
   formData: FormData,
@@ -29,7 +49,7 @@ export async function loginAction(
     maxAge: 60 * 60 * 24 * 30, // 30 days
   });
 
-  redirect(String(formData.get("next") || "/admin"));
+  redirect(safeNextPath(formData.get("next")));
 }
 
 export async function logoutAction() {
