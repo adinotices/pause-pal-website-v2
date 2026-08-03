@@ -150,16 +150,23 @@ export function evaluateGroup(
     }
   }
 
-  const score = Math.max(
-    1,
+  // Deliberately not clamped to a minimum: solve.ts only ever adds an edge
+  // for a feasible group in the first place (infeasible groups never reach
+  // here -- see `infeasible()` below and the `if (evaluation.feasible)`
+  // check in solve.ts), so there's no "0 means infeasible" convention to
+  // protect by keeping scores positive. Blossom's max-weight matching
+  // handles negative edge weights correctly; flooring every bad-but-
+  // feasible score to the same value would collapse genuinely different
+  // options (e.g. a repeat pairing vs. a merely mediocre fresh one) into
+  // ties the solver could break arbitrarily.
+  const score =
     overlapAdequacy +
-      sessionLengthFit +
-      frequencyFit +
-      experienceFit +
-      timezoneProximity +
-      genderAdjustment -
-      repeatPenalty,
-  );
+    sessionLengthFit +
+    frequencyFit +
+    experienceFit +
+    timezoneProximity +
+    genderAdjustment -
+    repeatPenalty;
 
   const explanation = buildExplanation({
     sessionsAvailable,

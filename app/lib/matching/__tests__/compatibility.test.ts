@@ -104,6 +104,79 @@ describe("evaluateGroup - scoring", () => {
 
     expect(close.score).toBeGreaterThan(far.score);
   });
+
+  // Regression: score used to be floored to a minimum of 1, so two
+  // differently-bad-but-feasible pairs could both land on the exact same
+  // value and become indistinguishable to the solver (which then had no
+  // signal to prefer the merely-mediocre option over the genuinely worse
+  // one). Both pairs below score under 1 on the raw formula -- under the
+  // old floor they'd have collapsed to an identical score of 1.
+  it("does not collapse differently-bad feasible pairs to the same floored score", () => {
+    // Person A: Monday 08:00-08:05, offset 0.
+    // Person B: Monday 20:00-20:05, offset +720 (12h) -- same canonical
+    // instant as A despite being 12h apart in stated timezone offset, so
+    // there's still exactly one feasible (if barely long enough) session.
+    const severelyBad = evaluateGroup(
+      [
+        testCandidate({
+          firstName: "Ada",
+          signupId: 1,
+          localSlots: [{ dayOfWeek: 1, startMinute: 480, endMinute: 485 }],
+          utcOffsetMinutes: 0,
+          sessionsPerWeek: 7,
+          sessionLength: "5",
+          experienceLevel: "new",
+          partnerGenderPreference: "woman",
+          ownGenderIdentity: "man",
+        }),
+        testCandidate({
+          firstName: "Bo",
+          signupId: 2,
+          localSlots: [{ dayOfWeek: 1, startMinute: 1200, endMinute: 1205 }],
+          utcOffsetMinutes: 720,
+          sessionsPerWeek: 7,
+          sessionLength: "30_plus",
+          experienceLevel: "experienced",
+          partnerGenderPreference: "woman",
+          ownGenderIdentity: "man",
+        }),
+      ],
+      new Set([pairKey(1, 2)]),
+    );
+
+    const moderatelyBad = evaluateGroup(
+      [
+        testCandidate({
+          firstName: "Eve",
+          signupId: 5,
+          localSlots: [{ dayOfWeek: 1, startMinute: 480, endMinute: 485 }],
+          utcOffsetMinutes: 0,
+          sessionsPerWeek: 7,
+          sessionLength: "5",
+          experienceLevel: "new",
+          partnerGenderPreference: "woman",
+        }),
+        testCandidate({
+          firstName: "Fin",
+          signupId: 6,
+          localSlots: [{ dayOfWeek: 1, startMinute: 1200, endMinute: 1205 }],
+          utcOffsetMinutes: 720,
+          sessionsPerWeek: 7,
+          sessionLength: "30_plus",
+          experienceLevel: "experienced",
+          ownGenderIdentity: "man",
+        }),
+      ],
+      new Set([pairKey(5, 6)]),
+    );
+
+    expect(severelyBad.feasible).toBe(true);
+    expect(moderatelyBad.feasible).toBe(true);
+    expect(severelyBad.score).toBeLessThan(1);
+    expect(moderatelyBad.score).toBeLessThan(1);
+    expect(severelyBad.score).not.toBe(moderatelyBad.score);
+    expect(severelyBad.score).toBeLessThan(moderatelyBad.score);
+  });
 });
 
 describe("evaluateGroup - trios", () => {
