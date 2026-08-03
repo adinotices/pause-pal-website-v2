@@ -10,6 +10,7 @@ import {
   pgEnum,
   uniqueIndex,
   index,
+  check,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -145,7 +146,15 @@ export const availabilitySlots = pgTable(
     startMinute: smallint("start_minute").notNull(),
     endMinute: smallint("end_minute").notNull(),
   },
-  (table) => [index("availability_slots_signup_id_idx").on(table.signupId)],
+  (table) => [
+    index("availability_slots_signup_id_idx").on(table.signupId),
+    // Backstops the app-level Zod validation in app/signup/actions.ts --
+    // a zero/negative-duration slot doesn't crash anything downstream
+    // (toCanonicalIntervals just skips it), it just silently leaves a
+    // signup with no real availability and no visible error, so this is
+    // worth enforcing at the DB level too, not just at one call site.
+    check("availability_slots_end_after_start", sql`${table.endMinute} > ${table.startMinute}`),
+  ],
 );
 
 /** Matching + program preferences for a single signup. */

@@ -1,0 +1,1 @@
+ALTER TABLE "availability_slots" ADD CONSTRAINT "availability_slots_end_after_start" CHECK ("availability_slots"."end_minute" > "availability_slots"."start_minute");

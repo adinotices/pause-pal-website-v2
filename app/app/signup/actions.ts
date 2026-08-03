@@ -3,11 +3,22 @@
 import { z } from "zod";
 import { getOpenCohort, submitSignup, SignupAlreadyFinalizedError } from "@/lib/db/queries";
 
-const availabilitySchema = z.object({
-  dayOfWeek: z.number().int().min(0).max(6),
-  startMinute: z.number().int().min(0).max(1439),
-  endMinute: z.number().int().min(1).max(1440),
-});
+const availabilitySchema = z
+  .object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    startMinute: z.number().int().min(0).max(1439),
+    endMinute: z.number().int().min(1).max(1440),
+  })
+  // Without this, a slot with endMinute <= startMinute passes validation
+  // and gets persisted, but toCanonicalIntervals (lib/matching/
+  // availability.ts) silently skips any interval with duration <= 0 --
+  // so the signup ends up with zero real availability and no error was
+  // ever shown, leaving the person permanently unmatchable with nothing
+  // pointing at why.
+  .refine((slot) => slot.endMinute > slot.startMinute, {
+    message: "End time must be after start time",
+    path: ["endMinute"],
+  });
 
 const signupSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required").max(100),
@@ -36,11 +47,27 @@ export async function submitSignupAction(
   _prevState: SignupFormState,
   formData: FormData,
 ): Promise<SignupFormState> {
+  // Parsed separately from the rest of `raw` below: it's the one field
+  // that isn't just a plain string/number straight off the FormData, so
+  // it's the one place malformed input (a hand-crafted request, a
+  // mangled hidden-input value) can throw before Zod ever gets a chance
+  // to produce a normal field error.
+  let availability: unknown;
+  try {
+    availability = JSON.parse(String(formData.get("availability") ?? "[]"));
+  } catch {
+    return {
+      status: "error",
+      message: "Please fix the highlighted fields and try again.",
+      fieldErrors: { availability: "Select at least one available time" },
+    };
+  }
+
   const raw = {
     firstName: String(formData.get("firstName") ?? ""),
     email: String(formData.get("email") ?? ""),
     timezone: String(formData.get("timezone") ?? ""),
-    availability: JSON.parse(String(formData.get("availability") ?? "[]")),
+    availability,
     sessionsPerWeek: Number(formData.get("sessionsPerWeek")),
     sessionLength: String(formData.get("sessionLength") ?? ""),
     ownGenderIdentity: String(formData.get("ownGenderIdentity") ?? ""),
