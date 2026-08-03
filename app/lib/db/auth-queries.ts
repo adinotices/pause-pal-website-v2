@@ -35,31 +35,27 @@ export async function createMagicLinkToken(personId: number): Promise<string> {
 }
 
 /** Consumes a magic-link token: valid, unexpired, unused tokens return the
- * associated personId and are marked consumed in the same step so the
- * link can't be used twice (e.g. an email client prefetching links). */
+ * associated personId and are marked consumed atomically so the link
+ * can't be used twice (e.g. an email client prefetching links, or two
+ * concurrent requests for the same click). The `WHERE consumedAt IS NULL`
+ * is checked by Postgres as part of the single UPDATE statement itself,
+ * not in a separate SELECT beforehand -- a select-then-update pattern
+ * would leave a window where two concurrent transactions both see the
+ * token as unconsumed before either commits its update. */
 export async function consumeMagicLinkToken(rawToken: string): Promise<number | null> {
   const tokenHash = hashToken(rawToken);
 
-  return db.transaction(async (tx) => {
-    const [token] = await tx
-      .select()
-      .from(magicLinkTokens)
-      .where(
-        and(
-          eq(magicLinkTokens.tokenHash, tokenHash),
-          isNull(magicLinkTokens.consumedAt),
-          gt(magicLinkTokens.expiresAt, new Date()),
-        ),
-      )
-      .limit(1);
+  const [token] = await db
+    .update(magicLinkTokens)
+    .set({ consumedAt: new Date() })
+    .where(
+      and(
+        eq(magicLinkTokens.tokenHash, tokenHash),
+        isNull(magicLinkTokens.consumedAt),
+        gt(magicLinkTokens.expiresAt, new Date()),
+      ),
+    )
+    .returning({ personId: magicLinkTokens.personId });
 
-    if (!token) return null;
-
-    await tx
-      .update(magicLinkTokens)
-      .set({ consumedAt: new Date() })
-      .where(eq(magicLinkTokens.id, token.id));
-
-    return token.personId;
-  });
+  return token?.personId ?? null;
 }
