@@ -53,7 +53,7 @@ production database:
 
 ```bash
 cd app
-DATABASE_URL=<production-connection-string> npm run drizzle:migrate
+DATABASE_URL=<production-connection-string> npx drizzle-kit migrate
 ```
 
 Do this once after the first deploy, and again after any future PR that

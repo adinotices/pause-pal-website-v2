@@ -54,9 +54,9 @@ Before deploying to production:
 ### 1. Database Migration
 ```bash
 cd app
-npm run drizzle:migrate
+DATABASE_URL=<production-connection-string> npx drizzle-kit migrate
 ```
-This applies the new indexes and constraints from 0004_thankful_madame_masque.sql
+This applies the pending migrations under `drizzle/*.sql` (including new indexes and constraints).
 
 ### 2. Environment Setup
 Ensure production `.env` includes:
