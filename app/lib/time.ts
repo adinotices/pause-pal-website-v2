@@ -36,6 +36,54 @@ export function guessTimezone(): string {
   }
 }
 
+/** The nth (1-indexed) occurrence of `weekday` (0=Sunday) in `month`
+ * (0=January) of `year`, at local midnight. */
+function nthWeekdayOfMonth(year: number, month: number, weekday: number, n: number): Date {
+  const first = new Date(year, month, 1);
+  const offset = (weekday - first.getDay() + 7) % 7;
+  return new Date(year, month, 1 + offset + (n - 1) * 7);
+}
+
+/** US daylight saving time transitions for `year` -- 2nd Sunday of March
+ * (spring forward) and 1st Sunday of November (fall back), per the Energy
+ * Policy Act of 2005. Computed rather than hardcoded to specific calendar
+ * dates so this doesn't silently stop working once a year with dates
+ * nobody thought to type in arrives. Deliberately US-specific (matching
+ * the app's primary audience); not accurate for timezones that follow a
+ * different DST convention (the EU's last-Sunday-of-March/October rule,
+ * the Southern Hemisphere's inverted schedule, or none at all). */
+export function usDSTTransitions(year: number): { springForward: Date; fallBack: Date } {
+  return {
+    springForward: nthWeekdayOfMonth(year, 2, 0, 2),
+    fallBack: nthWeekdayOfMonth(year, 10, 0, 1),
+  };
+}
+
+/** Whether the [startDate, endDate] range (inclusive, as ISO date strings)
+ * crosses a US DST transition -- used to warn an admin that a cohort's
+ * session times may need a manual look once participants confirm their
+ * timezones (see the module doc comment above for why storing local time
+ * doesn't fully solve this on its own). */
+export function spansUSDST(startDate: string, endDate: string): boolean {
+  if (!startDate || !endDate) return false;
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
+
+  for (let year = start.getFullYear(); year <= end.getFullYear(); year++) {
+    const { springForward, fallBack } = usDSTTransitions(year);
+    if (
+      (start <= springForward && end >= springForward) ||
+      (start <= fallBack && end >= fallBack)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /** A reasonably short list of common IANA zones for a <select>, with the
  * guessed zone always included even if it's not in the curated list. */
 export const COMMON_TIMEZONES = [

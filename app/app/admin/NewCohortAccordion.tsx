@@ -2,30 +2,7 @@
 
 import { useState, useRef, useMemo } from "react";
 import { createCohortAction } from "./actions";
-
-function spansDST(startDate: string, endDate: string): boolean {
-  if (!startDate || !endDate) return false;
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  const dstTransitions = [
-    { year: 2024, springForward: new Date(2024, 2, 10), fallBack: new Date(2024, 10, 3) },
-    { year: 2025, springForward: new Date(2025, 2, 9), fallBack: new Date(2025, 10, 2) },
-    { year: 2026, springForward: new Date(2026, 2, 8), fallBack: new Date(2026, 10, 1) },
-  ];
-
-  for (const transition of dstTransitions) {
-    if (
-      (start <= transition.springForward && end >= transition.springForward) ||
-      (start <= transition.fallBack && end >= transition.fallBack)
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-}
+import { spansUSDST } from "@/lib/time";
 
 export function NewCohortAccordion() {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,7 +10,7 @@ export function NewCohortAccordion() {
   const [endDate, setEndDate] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const hasDSTWarning = useMemo(() => spansDST(startDate, endDate), [startDate, endDate]);
+  const hasDSTWarning = useMemo(() => spansUSDST(startDate, endDate), [startDate, endDate]);
 
   return (
     <div className="mt-5">
